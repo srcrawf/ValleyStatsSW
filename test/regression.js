@@ -1,4 +1,4 @@
-// ValleyStats (Night Shift) regression checks.
+// ValleyStats (Southwest) regression checks.
 //
 // Loads the REAL index.html with jsdom and exercises its actual functions
 // (not reimplemented copies), with network calls stubbed out so it falls
@@ -6,6 +6,11 @@
 // a real bug (ESPN's record field using different key names than the code
 // assumed) shipped silently for a while — a check like this, run against a
 // realistic data shape, would have caught it immediately.
+//
+// This repo started as a copy of ValleyStatsNS (see PUNCHLIST.md) and is
+// expanding scope — more weather cities, more teams — so this file has
+// diverged from NS's copy and picks up checks specific to that expansion
+// as each punch-list item lands.
 //
 // Usage:
 //   npm install jsdom --no-save   (if not already installed)
@@ -181,6 +186,195 @@ setTimeout(() => {
         check('.today-game .sport-mark does not escape to the page corner',
             run(`window.getComputedStyle(document.querySelector('.today-game .sport-mark')).position`),
             'static');
+
+        // --- SW expansion: Glendale + Tucson weather locations ---
+        check('CONFIG.locations includes glendale and tucson with coordinates and a state abbreviation',
+            run(`(() => {
+                const g = CONFIG.locations.glendale, t = CONFIG.locations.tucson;
+                return !!(g && t && typeof g.latitude === 'number' && typeof g.longitude === 'number' && g.stateAbbr === 'AZ'
+                    && typeof t.latitude === 'number' && typeof t.longitude === 'number' && t.stateAbbr === 'AZ');
+            })()`),
+            true);
+        check('every CONFIG.locations entry has a matching weather card and forecast tab in the DOM',
+            run(`Object.keys(CONFIG.locations).every(key =>
+                document.querySelector(\`[data-weather="\${key}"]\`) && document.querySelector(\`[data-location="\${key}"]\`))`),
+            true);
+        check('loadAlerts watches every configured location, not just parker/tempe',
+            run(`(() => {
+                const src = loadAlerts.toString();
+                return !src.includes("alertPoints = { parker") && src.includes('alertPoints = locations');
+            })()`),
+            true);
+        check('alert place labels are looked up from CONFIG.locations rather than a hardcoded parker/tempe ternary',
+            run(`(() => {
+                const src = loadAlerts.toString();
+                return !/alert\\.place === 'parker' \\? 'Parker, CO' : 'Tempe, AZ'/.test(src) && src.includes('CONFIG.locations[alert.place]');
+            })()`),
+            true);
+
+        // --- weather row now scrolls horizontally instead of a fixed 2-up
+        // grid, so it scales past 2 cards without another layout rewrite
+        // (flagged in PUNCHLIST.md #6 as needing a "real layout decision"). ---
+        check('.weather-grid is a horizontally-scrolling row, not a fixed-column grid',
+            run(`window.getComputedStyle(document.querySelector('.weather-grid')).display`),
+            'flex');
+        check('.weather-and-today no longer hardcodes exactly 2 weather columns',
+            !cssText.includes('.weather-and-today { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)) 220px;'),
+            true);
+
+        // --- the 3 remaining Southwest weather cities (Albuquerque, Flagstaff, Las Cruces) ---
+        check('CONFIG.locations includes all 3 remaining Southwest cities',
+            run(`['albuquerque', 'flagstaff', 'lascruces'].every(k =>
+                CONFIG.locations[k] && typeof CONFIG.locations[k].latitude === 'number' && typeof CONFIG.locations[k].longitude === 'number')`),
+            true);
+        check('all 7 planned CONFIG.locations entries have a matching weather card and forecast tab',
+            run(`Object.keys(CONFIG.locations).length === 7 && Object.keys(CONFIG.locations).every(key =>
+                document.querySelector(\`[data-weather="\${key}"]\`) && document.querySelector(\`[data-location="\${key}"]\`))`),
+            true);
+
+        // --- new teams: UNM, NMSU, NAU tracked for both sports, same as ASU/UA ---
+        check('sportsFeeds tracks UNM, NMSU, and NAU for both football and basketball, with verified ESPN ids',
+            run(`(() => {
+                const expected = { unm: '167', nmsu: '166', nau: '2464' };
+                return Object.entries(expected).every(([key, id]) =>
+                    ['football', 'basketball'].every(sport =>
+                        sportsFeeds.some(f => f.teamKey === key && f.sport === sport && f.teamId === id)));
+            })()`),
+            true);
+        check('teamLogos has an entry for each new team',
+            run(`['unm', 'nmsu', 'nau'].every(k => typeof teamLogos[k] === 'string' && teamLogos[k].length > 0)`),
+            true);
+        check('CONFIG.standingsGroups has a verified conference group id for every college team, both sports',
+            run(`(() => {
+                const teams = ['asu', 'ua', 'unm', 'nmsu', 'nau'];
+                return ['football', 'basketball'].every(sport =>
+                    teams.every(t => typeof CONFIG.standingsGroups[sport][t] === 'string' && CONFIG.standingsGroups[sport][t].length > 0));
+            })()`),
+            true);
+
+        // --- rivalry highlighting: matched by the opponent's ESPN team id,
+        // not by display-name text (which varies by feed). ---
+        run(`
+            window.__territorialCup = { teamKey: 'asu', opponentTeamId: '12' };
+            window.__rioGrande = { teamKey: 'nmsu', opponentTeamId: '167' };
+            window.__notARivalry = { teamKey: 'asu', opponentTeamId: '99999' };
+        `);
+        check('isRivalryGame flags ASU vs Arizona (Territorial Cup)', run(`isRivalryGame(window.__territorialCup)`), true);
+        check('isRivalryGame flags NMSU vs UNM (Rio Grande Rivalry)', run(`isRivalryGame(window.__rioGrande)`), true);
+        check('isRivalryGame does not flag an unrelated matchup', run(`isRivalryGame(window.__notARivalry)`), false);
+
+        // --- mobile/crowding fix: a busy day caps inline calendar-event boxes
+        // and points to the existing tap-for-detail panel instead, so this
+        // scales to any number of same-day games (e.g. once 7 teams share
+        // one calendar) rather than needing another pass per team added. ---
+        run(`
+            const busyDay = '2026-09-19';
+            games = ['asu', 'ua', 'unm', 'nmsu'].map((key, i) => ({
+                teamKey: key, sport: 'football', calendarDate: busyDay,
+                dateValue: new Date('2026-09-19T00:00:00Z'), state: 'pre',
+                team: key.toUpperCase(), opponent: \`vs Test Opponent \${i}\`,
+                opponentShort: \`Test \${i}\`, time: 'TBD'
+            }));
+            renderGames('all');
+            updateCalendarMonth();
+            window.__busyCell = document.querySelector('.calendar-cell[data-date="2026-09-19"]');
+        `);
+        check('a busy day caps inline calendar events at MAX_INLINE_CALENDAR_EVENTS',
+            run(`window.__busyCell.querySelectorAll('.calendar-event').length`), 2);
+        check('overflow games beyond the cap show a "+N more" indicator instead of just disappearing',
+            run(`window.__busyCell.querySelector('.calendar-event-more')?.textContent`), '+2 more');
+
+        // --- light theme ("High Noon") toggle ---
+        check('page starts in the default Night Shift (dark) theme',
+            run(`document.documentElement.dataset.theme`), undefined);
+        run(`document.querySelector('#theme-toggle').click();`);
+        check('clicking the theme toggle switches the root to data-theme="light"',
+            run(`document.documentElement.dataset.theme`), 'light');
+        check('the light palette actually changes the --bg custom property value',
+            run(`window.getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()`), '#f5f2ea');
+        check('toggle button reflects the light state via aria-pressed',
+            run(`document.querySelector('#theme-toggle').getAttribute('aria-pressed')`), 'true');
+        run(`document.querySelector('#theme-toggle').click();`);
+        check('clicking again switches back to Night Shift (data-theme removed)',
+            run(`document.documentElement.dataset.theme`), undefined);
+        check('every hardcoded dark-only panel/well color was moved to a theme variable',
+            !/rgba\(12,16,22|#0e141c|#1c232d/.test(cssText),
+            true);
+
+        // --- conference standings ---
+        check('extractStandingsRecord reads a verified ESPN stat shape (name/displayValue)',
+            run(`extractStandingsRecord([{ name: 'overall', type: 'total', displayValue: '12-2' }], ['overall'])`),
+            '12-2');
+        check('extractStandingsRecord falls back through a list of candidate stat names',
+            run(`extractStandingsRecord([{ name: 'conference', displayValue: '7-2' }], ['vsconf', 'conference'])`),
+            '7-2');
+        check('extractStandingsRecord returns empty string rather than throwing when stats are missing',
+            run(`extractStandingsRecord(undefined, ['overall'])`),
+            '');
+        check('every tracked college team has a display label for the standings strip',
+            run(`Object.keys(COLLEGE_TEAM_ID_BY_KEY).every(k => typeof STANDINGS_TEAM_LABEL[k] === 'string')`),
+            true);
+        run(`renderStandings([{ teamKey: 'asu', sport: 'football', overall: '2-0', conference: '1-0' }]);`);
+        check('renderStandings renders a team entry with its conference and overall record',
+            run(`document.querySelector('#standings-strip').textContent.includes('Conf 1-0') &&
+                 document.querySelector('#standings-strip').textContent.includes('Overall 2-0') &&
+                 document.querySelector('#standings-strip').textContent.includes('Sun Devils')`),
+            true);
+        run(`renderStandings([]);`);
+        check('renderStandings shows a plain-language message rather than a blank strip when nothing is available',
+            run(`document.querySelector('.standings-empty') !== null`),
+            true);
+        check('standings always request seasontype=2 explicitly (verified: FCS group standings silently zero out without it)',
+            run(`fetchGroupStandings.toString().includes('seasontype=2')`),
+            true);
+
+        // --- historical "normal" weather comparison ---
+        check('dayOfYearFromMonthDay orders month-days correctly within a year',
+            run(`dayOfYearFromMonthDay('01-01') < dayOfYearFromMonthDay('06-15') && dayOfYearFromMonthDay('06-15') < dayOfYearFromMonthDay('12-31')`),
+            true);
+        check('isWithinDayWindow matches a nearby date',
+            run(`isWithinDayWindow('09-10', '09-12', 3)`),
+            true);
+        check('isWithinDayWindow rejects a date outside the window',
+            run(`isWithinDayWindow('01-01', '09-12', 3)`),
+            false);
+        check('isWithinDayWindow handles year-boundary wraparound (Dec 30 is close to Jan 2)',
+            run(`isWithinDayWindow('12-30', '01-02', 3)`),
+            true);
+        check('computeNormalFromArchive averages only the days within the window, ignoring the rest',
+            run(`(() => {
+                const data = {
+                    daily: {
+                        time: ['2020-09-10', '2020-09-12', '2020-01-01', '2021-09-12'],
+                        temperature_2m_max: [90, 100, 40, 96],
+                        temperature_2m_min: [70, 74, 20, 72]
+                    }
+                };
+                // 09-10, 09-12, and 09-12 (next year) are within 3 days of
+                // 09-12; 01-01 is not, and must be excluded from the average.
+                return computeNormalFromArchive(data, '09-12');
+            })()`),
+            { high: 95, low: 72 });
+        check('computeNormalFromArchive returns null when nothing in range matches (rather than NaN/0)',
+            run(`computeNormalFromArchive({ daily: { time: ['2020-01-01'], temperature_2m_max: [40], temperature_2m_min: [20] } }, '09-12')`),
+            null);
+        check('the historical endpoint is the Historical Weather API (archive-api), not the Climate API — verified the Climate API serves model projections, not day-of-year normals',
+            run(`(() => {
+                const src = fetchHistoricalNormal.toString();
+                return src.includes('archive-api.open-meteo.com') && !src.includes('climate-api.open-meteo.com');
+            })()`),
+            true);
+        run(`
+            document.querySelector('[data-weather="tempe"] .weather-meta').querySelectorAll('.normal-high').forEach(n => n.remove());
+            renderHistoricalNormals({ tempe: { high: 91, low: 68 } });
+        `);
+        check('renderHistoricalNormals appends a normal-high reading to the matching weather card',
+            run(`document.querySelector('[data-weather="tempe"] .normal-high')?.textContent.includes('91')`),
+            true);
+        run(`renderHistoricalNormals({ tempe: { high: 91, low: 68 } });`);
+        check('renderHistoricalNormals does not duplicate the reading on a second call',
+            run(`document.querySelectorAll('[data-weather="tempe"] .normal-high').length`),
+            1);
 
         console.log(`\n${passed} passed, ${failed} failed.`);
         process.exit(failed ? 1 : 0);

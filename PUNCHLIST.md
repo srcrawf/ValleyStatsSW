@@ -1,137 +1,159 @@
 # ValleyStatsSW — punch list
 
 Started from a straight copy of ValleyStatsNS (Night Shift) at the point this
-repo was created. Nothing below has been built yet — this is scope + open
-questions to work from when each item gets picked up. "SW" = Southwest: this
-repo expands ValleyStatsNS from an Arizona-only sports list into an
-Arizona + New Mexico one, and from a Colorado/Arizona weather pair into a
-five-city Southwest spread.
+repo was created. "SW" = Southwest: this repo expands ValleyStatsNS from an
+Arizona-only sports list into an Arizona + New Mexico one, and from a
+Colorado/Arizona weather pair into a seven-city Southwest spread.
 
-## 1. Light theme ("High Noon")
+**All 7 items below are done.** This file is kept as a record of what was
+built and the open questions each item raised along the way, in case any of
+those decisions need revisiting later (e.g. real logos/branding, verifying
+NAU's basketball schedule once its season starts, tuning the standings
+display once more of the season has been played).
 
-- The very first design round in this project explored two directions —
-  "Night Shift" (dark, what got built) and "High Noon" (light) — as a
-  comparison artifact. High Noon was never implemented; this revives it as a
-  selectable alternate theme rather than a replacement.
-- The whole site already reads its colors from `:root` CSS custom properties
-  (`--ink`, `--muted`, `--faint`, `--bg`, `--panel`, `--panel-raised`,
-  `--line`, plus the accent colors and the `--team-*` set added later), so
-  this should mostly be: define a second palette, add a toggle control, and
-  swap which palette is active — not a rewrite of every rule.
-- Needs a decision on toggle placement (header icon button is the obvious
-  spot) and persistence (localStorage is fine here — it's a per-viewer UI
-  preference, not data that needs to be reliable or shared).
-- Contrast should get the same AA pass the dark palette just got (`--faint`
-  was bumped from 3.57:1 to 5.2:1 against its background this round) —
-  don't assume a light palette is automatically fine just because it's
-  lighter.
+## 1. Light theme ("High Noon") — done
 
-## 2. Standings / rankings
+- Added as a selectable alternate to the default dark "Night Shift" palette,
+  not a replacement — a header icon button (`#theme-toggle`) flips
+  `<html data-theme="light">`, persisted to `localStorage`
+  (`valleyStats.theme`) and applied by a tiny inline `<head>` script before
+  first paint, so a saved light preference doesn't flash dark first.
+- Every color in the stylesheet already read from `:root` custom properties
+  except a handful of hardcoded literals (`.panel`'s background gradient,
+  the alert/live banner colors, and several `rgba(12,16,22,X)` "recessed
+  well" backgrounds like the weekday header strip and calendar cells) —
+  those were pulled out into their own variables (`--panel-grad-1/2`,
+  `--alert-bg/border/ink`, `--live-bg/border/ink`, `--well`) so the light
+  theme actually covers the whole page rather than leaving dark patches.
+- Contrast was computed (not eyeballed) for the light palette the same way
+  the dark `--faint` fix was validated earlier — `--ink`, `--muted`,
+  `--faint`, and the four accent colors (`--teal`, `--coral`, `--yellow`,
+  `--blue`) were all checked against every background they render on
+  (`--bg`, `--panel`, `--well`) and darkened until each cleared 4.5:1.
 
-- Show conference standings and/or playoff seeding for tracked teams, not
-  just their own schedule.
-- Open question: source. The schedule endpoints currently in use
-  (`site.web.api.espn.com/apis/site/v2/sports/.../teams/{id}/schedule`)
-  don't carry standings — this needs a different ESPN endpoint (likely a
-  `standings` endpoint per sport/league) found and verified against live
-  data before writing any code, the same way the record-field bug this
-  session (`record` vs `records`, `displayValue` vs `summary`) got found by
-  checking the real response instead of assuming a shape.
-- Scope question: standings for every tracked team, or just the ones in an
-  active season at a given time (e.g. basketball standings are meaningless
-  in September)?
+## 2. Standings / rankings — done
 
-## 3. Rivalry highlighting
+- Verified endpoint (not guessed):
+  `https://site.api.espn.com/apis/v2/sports/{football|basketball}/
+  {college-football|mens-college-basketball}/standings?season=YYYY&group=
+  <conference id>&seasontype=2`. Win-loss lives at `standings.entries[].stats[]`,
+  matched by `{name:"overall"}` (season) and `{name:"vsconf"}` (conference-only).
+- **`seasontype=2` must be passed explicitly** — verified that an FCS group
+  (Northern Arizona's Big Sky) silently returns all-zero stats without it,
+  with no error to signal the problem. Always included now.
+- Conference group ids were looked up per team via `teams/{id}` →
+  `.groups.id` (not guessed) for all 5 college teams, both sports. Arizona
+  State and Arizona share a group in both sports (both are Big 12 since the
+  2024 realignment) — football: asu/ua=4, unm=17, nmsu=12, nau=20;
+  basketball: asu/ua=8, unm=44, nmsu=11, nau=5. Stored at
+  `CONFIG.standingsGroups`.
+- Scope decision: shows only tracked *college* teams (asu, ua, unm, nmsu,
+  nau) — the Cardinals (NFL) and Suns (NBA) use entirely different ESPN
+  standings endpoints that weren't part of this pass, so they're left out of
+  the standings strip for now rather than guessing at an unverified shape.
+- The "basketball standings are meaningless before the season starts"
+  scoping question resolved itself naturally: the fetch returns no
+  `standings` key at all for a season that hasn't tipped off, and that
+  team/sport is simply omitted from the display rather than shown as a fake
+  "0-0" — no separate season-awareness logic needed.
+- Renders as a compact strip (`#standings-strip`) under the team legend:
+  logo, team + sport, conference and overall record. Cached 6 hours
+  (standings don't move faster than that) and refreshed once per page load,
+  not on the 15-minute weather/scores poll.
 
-- ASU vs. Arizona (Territorial Cup) is the one already fully in-scope today.
-- Adding NAU brings in an in-state trio (ASU/UA/NAU all in Arizona).
-- Adding NMSU and UNM brings in the Rio Grande Rivalry (NM State vs. New
-  Mexico) as a second pair to flag.
-- Implementation idea: a small static list of rivalry pairs (by teamKey),
-  checked when rendering a game, applying a distinct border/badge style —
-  similar in spirit to the existing per-team border-color coding, just
-  triggered by "both teams in this matchup are a known rivalry pair"
-  instead of by a single team.
+## 3. Rivalry highlighting — done
 
-## 4. Historical weather comparison
+- Matched by the opponent's ESPN team id (`game.opponentTeamId`, newly
+  exposed from `normalizeGame`), not by opponent display-name text — names
+  vary by feed ("Arizona Wildcats" vs "Arizona").
+- Pairs flagged: ASU vs. Arizona (Territorial Cup), NM State vs. New Mexico
+  (Rio Grande Rivalry), and both Arizona-vs-NAU in-state matchups.
+- Shows a small trophy badge next to the team name and a subtle gold outline
+  on the game box, in the calendar grid, the day-detail panel, and today's
+  games — wherever a game already renders.
 
-- Show something like "normal high for today is X°" next to the live
-  reading, for context.
-- Open-Meteo (already the weather source here) has a separate historical/
-  climate API from the forecast one currently used — needs checking whether
-  it covers all 5 planned cities and what its actual response shape is
-  before writing extraction code (same lesson as #2).
+## 4. Historical weather comparison — done
 
-## 5. Mobile calendar is still too crowded
+- Verified there's no dedicated "climate normals" endpoint on Open-Meteo.
+  The separate `climate-api.open-meteo.com` host serves downscaled
+  IPCC/CMIP6 climate-model projections for research use, not day-of-year
+  averages — not what "normal" means here, so it was skipped in favor of
+  the Historical Weather API (`archive-api.open-meteo.com/v1/archive`),
+  which returns real past daily data in the same `daily`/`daily_units`
+  shape as the forecast API already in use.
+- "Normal" is computed client-side: one request per location covering the
+  last 10 full calendar years (`temperature_2m_max/min` only, to keep the
+  payload lean), averaging the days within 3 days of today's month/day
+  across those years.
+- Shows as a 4th "NORMAL" reading in each weather card's meta row, next to
+  HIGH/LOW/WIND. Cached 30 days (normals barely move day to day) and
+  refreshed at most once per page load — this is a heavier request than the
+  live forecast call, so it deliberately isn't on the 15-minute poll.
 
-- The mobile pass done earlier this session (hiding secondary chips,
-  switching to ESPN's short opponent names, fixing a sport-icon padding
-  overlap) wasn't enough — flagged again as still cramped on phones.
-- This needs a fresh look, and should be designed for the *end state* of
-  this repo (7 teams instead of 4, once NAU/UNM/NMSU are added) rather than
-  patched again for today's load — more teams sharing one calendar means
-  more simultaneous games per day, so whatever the fix is needs headroom.
-- Options worth evaluating rather than assuming: shrinking further (smaller
-  logos, no opponent name at all in the grid); collapsing a busy day to a
-  "+N more" indicator that opens the existing day-detail panel; or
-  rethinking the month-grid entirely for narrow widths (e.g. a per-day list
-  instead of a 7-column grid below some width). Worth prototyping more than
-  one option before committing, since the "just hide more stuff" move has
-  already been tried once.
+## 5. Mobile calendar crowding — done
 
-## 6. New weather cities
+- Scoped for the *end state* (7 teams sharing one calendar, not the 4 this
+  repo started with): each day now caps inline calendar-event boxes at 2
+  (`MAX_INLINE_CALENDAR_EVENTS`) and shows a "+N more" indicator for the
+  rest, leaning on the day-detail panel that already opens on tap/click for
+  the whole cell — no new click target needed, and no cap to revisit as more
+  teams get added later, since the mechanism doesn't hardcode a team count.
 
-Add to the existing Parker, CO / Tempe, AZ pair:
+## 6. New weather cities — done
 
-- **Albuquerque, NM**
-- **Tucson, AZ** — also directly useful for #7: this is where Arizona
-  Wildcats home games actually are (Tempe is ASU's campus, not Arizona's —
-  noted when this got suggested).
-- **Flagstaff, AZ** — genuinely different climate/elevation than the valley
-  cities, and is NAU's location once that team is added.
-- **Las Cruces, NM** — NMSU's location.
+All 7 planned Southwest cities are in `CONFIG.locations`: Parker CO, Tempe
+AZ, Glendale AZ, Tucson AZ (also fixes Wildcats venue accuracy — Tempe is
+ASU's campus, not Arizona's), Albuquerque NM, Flagstaff AZ (NAU's location),
+and Las Cruces NM (NMSU's location).
 
-Implementation notes:
-- `CONFIG.locations` currently holds 2 entries with lat/long — needs 4 more
-  (coordinates to look up, not guess).
-- The weather UI (`.weather-grid`, the two `.weather-card`s, the
-  `.forecast-tabs` location tabs) was built and styled around exactly 2
-  locations side by side. Going to 6 total needs a real layout decision, not
-  just adding more cards to the same grid — a scrollable row, a dropdown/
-  select instead of tabs, or a smaller card design are all options worth
-  weighing rather than defaulting to "just add 4 more of the same card."
+- The weather row was rebuilt as a horizontally-scrolling, snap-to card row
+  (`.weather-grid { display:flex; overflow-x:auto; scroll-snap-type:x
+  proximity; }`) instead of a CSS grid hardcoded to exactly 2 columns — this
+  was the "real layout decision" this item flagged, and it's why cities
+  7 through 4 (then 7) didn't need another layout rewrite each time.
+  `.forecast-tabs` got the same scrolling treatment.
+- `loadAlerts`/the alert-banner place label used to be hardcoded to just
+  `parker`/`tempe` — generalized to iterate all of `CONFIG.locations`, so
+  weather alerts now cover every city automatically.
 
-## 7. New teams: UNM, NMSU, NAU — football and basketball
+## 7. New teams: UNM, NMSU, NAU — football and basketball — done
 
-Track New Mexico Lobos, New Mexico State Aggies, and Northern Arizona
-Lumberjacks the same way ASU and Arizona are tracked today (both football
-and basketball, via `sportsFeeds`).
+New Mexico Lobos, New Mexico State Aggies, and Northern Arizona Lumberjacks
+are tracked the same way ASU and Arizona are, via `sportsFeeds`.
 
-Open items:
-- Need each school's ESPN team ID for both
-  `football/college-football/teams/{id}/schedule` and
-  `basketball/mens-college-basketball/teams/{id}/schedule` — 6 lookups
-  total (3 schools × 2 sports), verified against live ESPN data rather than
-  guessed, the same way ASU's id (9) and Arizona's (12) were already
-  confirmed working.
-- NAU football is FCS (Big Sky Conference), not FBS like ASU/Arizona/most of
-  what this site currently tracks — needs checking whether the same
-  `college-football` endpoint path actually returns FCS teams correctly, or
-  whether something differs (season structure, seasontype values, available
-  fields) before assuming it's a drop-in.
-- Each new team needs: a `teamLogos` entry, a `--team-*` CSS color variable
-  and a `.calendar-event[data-team="..."]` border-color rule (won't collide
-  with existing Cardinals/ASU/Arizona/Suns colors — needs 3 more distinct
-  colors picked), and an entry in the `.team-legend` HTML/CSS added this
-  session.
-- Directly related to #5: this is what pushes the tracked-team count from 4
-  to 7, which is why the mobile crowding fix should be scoped for 7 teams,
-  not patched for 4 and then re-broken again once these land.
+- ESPN team ids verified against live data (not guessed): New Mexico = 167,
+  New Mexico State = 166, Northern Arizona = 2464 — each confirmed via a
+  real, non-empty schedule response with valid dates and competitors.
+- Confirmed Northern Arizona's FCS status (Big Sky Conference) doesn't need
+  a different endpoint — the same `college-football/teams/{id}/schedule`
+  path returns real, well-formed data for it, including a game against
+  Arizona (id 12) that served as a nice cross-check.
+- Each team has a `teamLogos` entry, a `--team-*` CSS color (chosen to stay
+  visually distinct from the existing red/orange cluster — Lobos wine
+  `#b8285f`, Aggies gold `#c17817`, Lumberjacks blue `#2b6cb0`, since NAU's
+  actual colors are blue/gold), a `.calendar-event[data-team]` border rule,
+  and a `.team-legend` entry.
+- This is what pushed the tracked-team count from 4 to 7, which is why the
+  mobile crowding fix (#5) was designed for 7 rather than patched for 4.
+
+## Verification
+
+All of the above is covered by `test/regression.js` (jsdom, loads the real
+`index.html`) — 57 checks as of this pass, including the new-this-round
+config/endpoint/parsing checks (standings field extraction, rivalry
+matching, the historical-normal averaging math, the theme toggle actually
+changing computed styles, the calendar-cap "+N more" behavior, and that
+every planned weather city/team config entry is present and wired to a
+matching DOM element). Run with `node test/regression.js` after
+`npm install jsdom --no-save`.
 
 ## Not part of this list
 
 - add-to-calendar — explicitly ruled out earlier in this project, staying
   ruled out unless that changes.
-- The one remaining code nitpick from the last refinement pass (a lone
+- Cardinals (NFL) and Suns (NBA) standings — different ESPN endpoint family
+  than the college standings verified for this pass; left out rather than
+  guessing at an unverified shape. Worth a future pass if wanted.
+- The one remaining code nitpick from an earlier refinement pass (a lone
   `!important` on `.selected-day-time`) — reviewed and explicitly left as-is
   by request, not a bug, not on this list.
