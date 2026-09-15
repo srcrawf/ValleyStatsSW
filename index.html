@@ -895,6 +895,46 @@
             return el('span', { className: 'rivalry-badge', 'aria-label': 'Rivalry game', title: 'Rivalry game', text: '\u{1F3C6}' });
         }
 
+        // When two ValleyStats-tracked teams play each other (e.g. ASU @
+        // Arizona, or any other RIVALRY_PAIRS matchup — though this applies
+        // to any two tracked teams meeting, not just the flagged rivalries),
+        // each team's own ESPN feed independently returns that same
+        // real-world game: once from ASU's schedule, once from Arizona's.
+        // Left alone, that means the calendar, today's-games list, and
+        // selected-day panel would all show the same game twice. This
+        // collapses each such pair down to a single entry — matched by
+        // ESPN's own event id where available (shared across both
+        // participants' feeds, so it's exact), falling back to
+        // sport+calendarDate+team-pair for data that has no event id (e.g.
+        // the hardcoded sample schedule). The home team's entry is kept,
+        // matching how ESPN's own site frames a shared matchup; if neither
+        // side reads as home (shouldn't normally happen) the first one
+        // encountered wins.
+        function dedupeMutualGames(gameList) {
+            const trackedIds = new Set(Object.values(COLLEGE_TEAM_ID_BY_KEY));
+            const indexByKey = new Map();
+            const result = [];
+            gameList.forEach(game => {
+                if (!trackedIds.has(game.opponentTeamId)) { result.push(game); return; }
+                const opponentKey = Object.keys(COLLEGE_TEAM_ID_BY_KEY)
+                    .find(key => COLLEGE_TEAM_ID_BY_KEY[key] === game.opponentTeamId);
+                const pairKey = [game.teamKey, opponentKey].sort().join('-');
+                const dedupeKey = game.eventId
+                    ? `id:${game.sport}:${game.eventId}`
+                    : `pair:${game.sport}:${pairKey}:${game.calendarDate}`;
+                if (!indexByKey.has(dedupeKey)) {
+                    indexByKey.set(dedupeKey, result.length);
+                    result.push(game);
+                    return;
+                }
+                const existingIndex = indexByKey.get(dedupeKey);
+                const isHome = game.opponent?.startsWith('vs');
+                const existingIsHome = result[existingIndex].opponent?.startsWith('vs');
+                if (isHome && !existingIsHome) result[existingIndex] = game;
+            });
+            return result;
+        }
+
         function buildCalendarEvent(game) {
             const isFinished = game.state === 'post' || game.state === 'in';
             const infoText = isFinished
@@ -1254,7 +1294,12 @@
                 // to detect rivalry games by id rather than matching on the
                 // opponent's display name, which varies ("Arizona Wildcats"
                 // vs "Arizona") depending on which feed it comes from.
-                opponentTeamId: opponent?.team?.id ? String(opponent.team.id) : ''
+                opponentTeamId: opponent?.team?.id ? String(opponent.team.id) : '',
+                // ESPN's own event id — shared between both participants'
+                // schedule feeds for the same real-world game, so it's the
+                // most reliable way to spot the "two tracked teams play each
+                // other" case dedupeMutualGames collapses down to one entry.
+                eventId: event.id ? String(event.id) : ''
             };
         }
 
@@ -1305,11 +1350,14 @@
 
                 const liveKeys = new Set(liveGames.map(g => `${g.sport}:${g.teamKey}`));
                 const missing = results.filter(r => !liveKeys.has(`${r.feed.sport}:${r.feed.teamKey}`));
-                const combinedGames = [
+                // dedupeMutualGames collapses a game between two tracked
+                // teams (e.g. ASU @ Arizona) down to one entry — each side's
+                // own feed otherwise contributes its own copy of it.
+                const combinedGames = dedupeMutualGames([
                     ...liveGames,
                     ...missing.flatMap(r =>
                         fallbackGames.filter(g => g.sport === r.feed.sport && g.teamKey === r.feed.teamKey))
-                ];
+                ]);
 
                 let sourceLabel;
                 if (liveGames.length) {

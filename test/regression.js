@@ -263,6 +263,41 @@ setTimeout(() => {
         check('isRivalryGame flags NMSU vs UNM (Rio Grande Rivalry)', run(`isRivalryGame(window.__rioGrande)`), true);
         check('isRivalryGame does not flag an unrelated matchup', run(`isRivalryGame(window.__notARivalry)`), false);
 
+        // --- dedupeMutualGames: when two tracked teams play each other,
+        // each side's own ESPN feed independently returns that same game —
+        // this collapses the pair back down to a single calendar entry. ---
+        run(`
+            // Same real-world game (shared eventId), one copy from each
+            // team's own feed — ASU hosting Arizona.
+            window.__mutualHome = {
+                sport: 'football', teamKey: 'asu', opponentTeamId: '12',
+                opponent: 'vs Arizona Wildcats', calendarDate: '2026-11-28', eventId: '401520000'
+            };
+            window.__mutualAway = {
+                sport: 'football', teamKey: 'ua', opponentTeamId: '9',
+                opponent: '@ Arizona State', calendarDate: '2026-11-28', eventId: '401520000'
+            };
+            window.__unrelated = {
+                sport: 'football', teamKey: 'unm', opponentTeamId: '99999',
+                opponent: 'vs Some Non-Tracked Team', calendarDate: '2026-11-14', eventId: '401599999'
+            };
+            window.__dedupedByEventId = dedupeMutualGames([window.__mutualHome, window.__mutualAway, window.__unrelated]);
+            // Same matchup again but with no eventId (e.g. sample/fallback
+            // data) — must still collapse via the sport+date+team-pair
+            // fallback key.
+            window.__mutualHomeNoId = { sport: 'football', teamKey: 'asu', opponentTeamId: '12', opponent: 'vs Arizona Wildcats', calendarDate: '2026-11-28', eventId: '' };
+            window.__mutualAwayNoId = { sport: 'football', teamKey: 'ua', opponentTeamId: '9', opponent: '@ Arizona State', calendarDate: '2026-11-28', eventId: '' };
+            window.__dedupedByPair = dedupeMutualGames([window.__mutualAwayNoId, window.__mutualHomeNoId]);
+        `);
+        check('a game between two tracked teams collapses from two feed copies down to one',
+            run(`window.__dedupedByEventId.length`), 2);
+        check('games against a non-tracked opponent are left alone (only mutual tracked-vs-tracked pairs are collapsed)',
+            run(`window.__dedupedByEventId.some(g => g === window.__unrelated)`), true);
+        check(`the kept entry is the home team's perspective ("vs", not "@")`,
+            run(`window.__dedupedByEventId.find(g => g.opponentTeamId === '12' || g.opponentTeamId === '9')?.opponent`), 'vs Arizona Wildcats');
+        check('dedup still collapses a mutual pair that has no eventId, via the sport+date+team-pair fallback key',
+            run(`window.__dedupedByPair.length`), 1);
+
         // --- mobile/crowding fix: a busy day caps inline calendar-event boxes
         // and points to the existing tap-for-detail panel instead, so this
         // scales to any number of same-day games (e.g. once 7 teams share
