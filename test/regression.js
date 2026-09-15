@@ -412,6 +412,77 @@ setTimeout(() => {
             (cssText.match(/\.mountain-mark\s*\{[^}]*\}/) || [''])[0].includes('var(--blue)'),
             true);
 
+        // --- selected-day panel: sport indicator + opponent-name prominence ---
+        // renderSelectedDayGames previously had no sport-mark at all (unlike
+        // buildCalendarEvent and renderTodayGames, which both already showed
+        // one), and no context split the opponent's name out from the rest
+        // of the muted meta text so it could be styled more prominently.
+        run(`
+            const testDay = '2026-10-03';
+            games = [{
+                teamKey: 'asu', sport: 'football', calendarDate: testDay,
+                dateValue: new Date('2026-10-03T00:00:00Z'), state: 'pre',
+                team: 'Arizona State', opponent: 'vs Test Rival',
+                opponentShort: 'Test Rival', time: 'TBD'
+            }];
+            renderGames('all');
+            updateCalendarMonth();
+            selectCalendarDay(testDay);
+            window.__selectedGame = document.querySelector('#selected-day-games .selected-day-game');
+            window.__calEvent = document.querySelector(\`.calendar-cell[data-date="\${testDay}"] .calendar-event\`);
+        `);
+        check('renderSelectedDayGames now shows a football/basketball sport indicator (previously only buildCalendarEvent and renderTodayGames did)',
+            run(`!!window.__selectedGame?.querySelector('.sport-mark')`), true);
+        check('the selected-day sport-mark stays in normal inline flow rather than escaping to the page corner (.selected-day-game has no position:relative to contain the base absolute rule)',
+            run(`getComputedStyle(window.__selectedGame.querySelector('.sport-mark')).position`), 'static');
+        check('renderSelectedDayGames opponent name is a separately styleable .opponent-name span',
+            run(`window.__selectedGame?.querySelector('.opponent-name')?.textContent`), 'Test Rival');
+        check('buildCalendarEvent opponent name is a separately styleable .opponent-name span',
+            run(`window.__calEvent?.querySelector('.opponent-name')?.textContent`), 'Test Rival');
+
+        // --- today's-games list: opponent name isolated from the trailing time ---
+        run(`
+            const todayKey = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+            games = [{
+                teamKey: 'ua', sport: 'basketball', calendarDate: todayKey,
+                dateValue: new Date(), state: 'pre', team: 'Arizona',
+                opponent: '@ Test Away Opp', opponentShort: 'Test Away', time: 'TBD'
+            }];
+            renderGames('all');
+            window.__todayGame = document.querySelector('#today-games-list .today-game');
+        `);
+        check('renderTodayGames opponent name is a separately styleable .opponent-name span',
+            run(`window.__todayGame?.querySelector('.opponent-name')?.textContent`), 'Test Away Opp');
+        check('renderTodayGames still shows the game time alongside the opponent name on one line',
+            run(`[...window.__todayGame.children].find(c => c.tagName === 'SPAN' && c.classList.length === 0)?.textContent.includes('TBD')`), true);
+        check('a finished/live game keeps its plain score-recap string rather than splitting out an opponent-name span (it is a score recap, not an identifying name label)',
+            run(`(() => {
+                games = [{
+                    teamKey: 'ua', sport: 'basketball', calendarDate: new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()),
+                    dateValue: new Date(), state: 'post', team: 'Arizona',
+                    opponent: '@ Test Away Opp', opponentShort: 'Test Away', time: 'TBD',
+                    score: [{ score: 70 }, { score: 7 }]
+                }];
+                renderGames('all');
+                const g = document.querySelector('#today-games-list .today-game');
+                return !g.querySelector('.opponent-name') && g.textContent.includes('Final');
+            })()`), true);
+
+        // --- opponent-name is visually bumped up from the surrounding muted
+        // meta text (same font-family/weight as team names) in every context,
+        // via the scoped two-class overrides required to beat the existing
+        // generic .calendar-event/.today-game/.selected-day-game span rule. ---
+        check('.opponent-name gets the prominent Sora/600 treatment in all three contexts (scoped to beat the generic span rule)',
+            ['calendar-event', 'today-game', 'selected-day-game'].every(ctx => {
+                const block = (cssText.match(new RegExp(`\\.${ctx} \\.opponent-name[^{]*\\{[^}]*\\}`)) || [''])[0];
+                return block.includes('Sora') && block.includes('font-weight:600');
+            }),
+            true);
+        check('.opponent-name still reads clearly less prominent than the followed team name (muted color, not --ink)',
+            run(`getComputedStyle(window.__selectedGame.querySelector('.opponent-name')).color`) !==
+            run(`getComputedStyle(window.__selectedGame.querySelector('strong')).color`),
+            true);
+
         console.log(`\n${passed} passed, ${failed} failed.`);
         process.exit(failed ? 1 : 0);
     } catch (e) {

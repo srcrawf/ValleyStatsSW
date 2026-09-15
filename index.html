@@ -90,11 +90,12 @@
         /* The base .sport-mark rule below positions it absolute for the
            calendar box's corner badge — that's only meant to work inside
            .calendar-event, which sets position:relative to contain it.
-           .today-game never set an equivalent, so this rule needs to
-           cancel it back to normal inline flow, or it escapes all the way
-           up to .shell (position:relative) and renders pinned to the
-           top-right of the whole page instead of next to the team name. */
-        .today-game .sport-mark { position:static; color:var(--yellow); display:inline; font-size:15px; margin-right:5px; }
+           Neither .today-game nor .selected-day-game set an equivalent, so
+           this rule needs to cancel it back to normal inline flow for both,
+           or it escapes all the way up to .shell (position:relative) and
+           renders pinned to the top-right of the whole page instead of next
+           to the team name. */
+        .today-game .sport-mark,.selected-day-game .sport-mark { position:static; color:var(--yellow); display:inline; font-size:15px; margin-right:5px; }
         .today-game strong { color:var(--ink); display:block; font-size:11px; }
         .today-game span { color:var(--muted); display:block; font:10px 'IBM Plex Mono',monospace; margin-top:4px; }
         .today-empty { color:var(--faint); font-size:11px; line-height:1.5; margin:28px 0 4px; }
@@ -254,6 +255,20 @@
         .calendar-event .team-record,.today-game .team-record,.selected-day-game .team-record,
         .calendar-event .logo-record,.today-game .logo-record,.selected-day-game .logo-record { color:var(--teal); }
         .selected-day-game .form-strip,.today-game .form-strip { display:inline-flex; }
+        /* Opponent name should read more prominently than the surrounding muted
+           meta text (time/broadcast/venue), but stay clearly secondary to the
+           followed team's own name (strong, --ink, Sora) above it — so it gets
+           the same font family/weight bumped up from the generic .calendar-event/
+           .today-game/.selected-day-game span rule, but keeps --muted color and a
+           smaller size than the team name. Scoped two-class selectors are required
+           to beat those generic span rules' specificity (0,1,1 vs a bare
+           .opponent-name's 0,1,0). */
+        .calendar-event .opponent-name,.today-game .opponent-name,.selected-day-game .opponent-name {
+            font-family:Sora,sans-serif; font-weight:600; color:var(--muted);
+        }
+        .calendar-event .opponent-name { font-size:10px; }
+        .today-game .opponent-name { font-size:11px; display:inline; overflow:visible; text-overflow:clip; white-space:normal; }
+        .selected-day-game .opponent-name { font-size:11px; }
         footer { color:var(--faint); font:10px 'IBM Plex Mono',monospace; margin-top:26px; }
         @media (max-width:900px) { .shell { width:min(100% - 32px,680px); padding-top:22px; } main { grid-template-columns:1fr; } main > section { min-width:0; max-width:100%; } .weather-and-today { grid-template-columns:1fr; width:100%; min-width:0; } .weather-grid { width:100%; min-width:0; } .month-grid { min-width:0; } .calendar-cell { min-height:82px; } }
         @media (max-width:520px) { header { align-items:flex-start; flex-direction:column; gap:18px; } .date-stamp { text-align:left; } .weather-card { min-width:0; width:82vw; max-width:280px; min-height:210px; } .temperature { font-size:68px; } .forecast-panel,.agenda { padding-left:15px; padding-right:15px; } .forecast-tabs { width:100%; overflow-x:auto; } .forecast-tabs button { flex:0 0 auto; } .calendar-heading { align-items:center; } .calendar-nav button { width:34px; height:34px; } .calendar-cell { min-height:64px; padding:7px 4px; } .calendar-day-number { color:var(--ink); font-size:12px; margin-bottom:6px; } .calendar-event { padding:5px 22px 6px 5px; } .team-logo { width:22px; height:22px; } .matchup-logos { gap:4px; } .sport-mark { font-size:15px; } .calendar-event strong { font-size:9px; } .calendar-event span { font-size:8px; } .calendar-event .broadcast-tag,.calendar-event .team-record,.calendar-event .venue-tag,.calendar-event .logo-record,.calendar-event .form-strip { display:none; } .hourly-strip { margin-top:14px; } .hour-col { flex-basis:60px; } .selected-day-games { padding:12px; } .selected-day-game { grid-template-columns:88px 1fr; } .selected-day-time { grid-column:2; text-align:left; } .top-banner { padding:10px 12px; font-size:11px; } }
@@ -831,10 +846,14 @@
                     });
                     article.appendChild(logoPair(game));
                     const mid = el('div');
-                    const teamLine = el('strong', { text: game.team });
+                    const teamLine = el('strong');
+                    if (sportMark(game.sport)) {
+                        teamLine.appendChild(el('span', { className: 'sport-mark', 'aria-label': `${game.sport} game`, text: sportMark(game.sport) }));
+                    }
+                    teamLine.appendChild(document.createTextNode(game.team));
                     if (isRivalry) teamLine.appendChild(rivalryBadge());
                     mid.appendChild(teamLine);
-                    mid.appendChild(el('span', { text: opponentName(game) }));
+                    mid.appendChild(el('span', { className: 'opponent-name', text: opponentName(game) }));
                     appendGameMeta(mid, game);
                     article.appendChild(mid);
                     article.appendChild(el('span', { className: 'selected-day-time', text: displayInfo }));
@@ -897,7 +916,7 @@
             // opponent name here (e.g. "Texas A&M" instead of "Texas A&M
             // Aggies") — the day-detail panel and today's-games list have
             // more room and still show the full name.
-            node.appendChild(el('span', { text: game.opponentShort || opponentName(game) }));
+            node.appendChild(el('span', { className: 'opponent-name', text: game.opponentShort || opponentName(game) }));
             node.appendChild(el('span', { className: 'game-status', text: infoText }));
             if (game.broadcast && game.broadcast !== 'TBD') {
                 node.appendChild(el('span', { className: 'broadcast-tag', text: `TV ${game.broadcast}` }));
@@ -1096,9 +1115,6 @@
             }
             todayGames.forEach(game => {
                 const isFinished = game.state === 'post' || game.state === 'in';
-                const gameInfo = isFinished
-                    ? gameSummary(game)
-                    : `${opponentName(game)} · ${game.time === 'TBD' ? 'TBD' : `${game.time} ${gameTzLabel()}`}`;
                 const isRivalry = isRivalryGame(game);
                 const article = el('article', { className: `today-game${isRivalry ? ' is-rivalry' : ''}` });
                 article.appendChild(logoPair(game));
@@ -1109,7 +1125,18 @@
                 teamLine.appendChild(document.createTextNode(game.team));
                 if (isRivalry) teamLine.appendChild(rivalryBadge());
                 article.appendChild(teamLine);
-                article.appendChild(el('span', { text: gameInfo }));
+                // Finished/live games get a single plain score-recap string (not an
+                // identifying "name" label, so it isn't split out for opponent-name
+                // styling); upcoming games isolate the opponent name into its own
+                // span so it can be styled more prominently than the trailing time.
+                const infoLine = el('span');
+                if (isFinished) {
+                    infoLine.appendChild(document.createTextNode(gameSummary(game)));
+                } else {
+                    infoLine.appendChild(el('span', { className: 'opponent-name', text: opponentName(game) }));
+                    infoLine.appendChild(document.createTextNode(` · ${game.time === 'TBD' ? 'TBD' : `${game.time} ${gameTzLabel()}`}`));
+                }
+                article.appendChild(infoLine);
                 appendGameMeta(article, game);
                 list.appendChild(article);
             });
