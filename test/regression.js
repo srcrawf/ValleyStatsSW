@@ -376,6 +376,42 @@ setTimeout(() => {
             run(`document.querySelectorAll('[data-weather="tempe"] .normal-high').length`),
             1);
 
+        // --- light theme: no hardcoded white icon colors left ---
+        // .weather-symbol (the 10-day forecast icons) and .rain-drops were
+        // hardcoded to #fff — invisible against High Noon's near-white
+        // panels, which is exactly what only shows up once the light theme
+        // actually exists. Both should read from a theme variable instead.
+        check('.weather-symbol (10-day forecast icons) uses a theme-aware color, not hardcoded white',
+            !/\.weather-symbol\s*\{[^}]*color:#fff/.test(cssText),
+            true);
+        check('.rain-drops uses a theme-aware color, not hardcoded white',
+            !/\.rain-drops i\s*\{[^}]*background:#fff/.test(cssText),
+            true);
+
+        // --- header mountain mark, sitting between the title and the theme toggle ---
+        check('a mountain-mark SVG sits between the "& Scoreboard" title and the theme toggle',
+            run(`(() => {
+                const h1 = document.querySelector('.brand-row h1');
+                const mark = document.querySelector('.brand-row .mountain-mark');
+                const toggle = document.querySelector('#theme-toggle');
+                if (!h1 || !mark || !toggle) return false;
+                // DOCUMENT_POSITION_FOLLOWING (4) means "comes after" in source order
+                const afterH1 = !!(h1.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING);
+                const beforeToggle = !!(mark.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING);
+                return afterH1 && beforeToggle;
+            })()`),
+            true);
+        check('the mountain mark uses the flat currentColor-fill style the cactus brand mark uses (no stroke)',
+            run(`(() => {
+                const mark = document.querySelector('.mountain-mark');
+                const path = mark?.querySelector('path');
+                return mark?.getAttribute('viewBox') === '0 0 24 24' && path?.getAttribute('fill') === 'currentColor' && !path?.getAttribute('stroke');
+            })()`),
+            true);
+        check('the mountain mark is colored blue (distinct from the teal cactus) via a theme-aware variable',
+            (cssText.match(/\.mountain-mark\s*\{[^}]*\}/) || [''])[0].includes('var(--blue)'),
+            true);
+
         console.log(`\n${passed} passed, ${failed} failed.`);
         process.exit(failed ? 1 : 0);
     } catch (e) {

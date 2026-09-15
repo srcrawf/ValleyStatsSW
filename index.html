@@ -57,6 +57,7 @@
         .theme-toggle:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
         .theme-toggle .material-symbols-rounded { font-size:18px; }
         .brand-mark { flex-shrink:0; width:clamp(30px,4.6vw,50px); height:clamp(30px,4.6vw,50px); color:var(--teal); }
+        .mountain-mark { flex-shrink:0; width:clamp(26px,4vw,42px); height:clamp(26px,4vw,42px); color:var(--blue); margin-left:2px; }
         .date-stamp { color:var(--muted); font:12px 'IBM Plex Mono',monospace; text-align:right; line-height:1.7; }
         .live-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--teal); margin-right:7px; box-shadow:0 0 0 4px rgba(79,216,196,.12); }
         .live-dot.offline { background:var(--coral); box-shadow:0 0 0 4px rgba(255,110,90,.12); }
@@ -110,9 +111,9 @@
         .forecast-day:last-child { border:0; }
         .forecast-day.today { background:rgba(111,180,255,.08); border-radius:7px; }
         .forecast-day time { display:block; color:var(--muted); font:10px 'IBM Plex Mono',monospace; text-transform:uppercase; }
-        .weather-symbol { display:block; color:#fff; font-size:34px; line-height:1; margin:19px 0 17px; }
+        .weather-symbol { display:block; color:var(--ink); font-size:34px; line-height:1; margin:19px 0 17px; }
         .rain-drops { display:flex; align-items:flex-start; gap:7px; height:31px; padding-top:2px; }
-        .rain-drops i { display:block; width:5px; height:18px; background:#fff; border-radius:3px; box-shadow:0 0 8px rgba(255,255,255,.22); }
+        .rain-drops i { display:block; width:5px; height:18px; background:var(--ink); border-radius:3px; box-shadow:0 0 8px rgba(111,180,255,.22); }
         .rain-drops i:nth-child(2) { margin-top:6px; }
         .rain-drops i:nth-child(3) { margin-top:1px; }
         .forecast-temp { font-size:16px; font-weight:700; }
@@ -266,7 +267,7 @@
     <div class="shell">
         <div id="alert-banner" class="top-banner alert-banner" hidden role="alert"></div>
         <div id="live-banner" class="top-banner live-banner" hidden aria-live="assertive" aria-atomic="true"></div>
-        <header><div class="brand-row"><svg class="brand-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11 3.5C11 2.67 10.33 2 9.5 2S8 2.67 8 3.5V10H6.5C5.67 10 5 10.67 5 11.5S5.67 13 6.5 13H8v8.5c0 .28.22.5.5.5h3c.28 0 .5-.22.5-.5V3.5Z" fill="currentColor"/><path d="M13 8.5c0-.83.67-1.5 1.5-1.5S16 7.67 16 8.5V13h1.5c.83 0 1.5.67 1.5 1.5S18.33 16 17.5 16H16v5.5c0 .28-.22.5-.5.5h-2c-.28 0-.5-.22-.5-.5V8.5Z" fill="currentColor"/></svg><h1>ValleyStats <span style="color:var(--coral)">& Scoreboard</span></h1><button id="theme-toggle" type="button" class="theme-toggle" aria-label="Switch to High Noon (light) theme" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true">dark_mode</span></button></div><div class="date-stamp"><div><span id="live-indicator" class="live-dot"></span><span id="clock">--:--</span> <span id="tz-name"></span></div><div id="today-label">Loading date...</div><div id="next-game-countdown" class="next-game-countdown" aria-live="polite">Next game: checking schedule...</div></div></header>
+        <header><div class="brand-row"><svg class="brand-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11 3.5C11 2.67 10.33 2 9.5 2S8 2.67 8 3.5V10H6.5C5.67 10 5 10.67 5 11.5S5.67 13 6.5 13H8v8.5c0 .28.22.5.5.5h3c.28 0 .5-.22.5-.5V3.5Z" fill="currentColor"/><path d="M13 8.5c0-.83.67-1.5 1.5-1.5S16 7.67 16 8.5V13h1.5c.83 0 1.5.67 1.5 1.5S18.33 16 17.5 16H16v5.5c0 .28-.22.5-.5.5h-2c-.28 0-.5-.22-.5-.5V8.5Z" fill="currentColor"/></svg><h1>ValleyStats <span style="color:var(--coral)">& Scoreboard</span></h1><svg class="mountain-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 19L9 7L12 11L15 4L21 19Z" fill="currentColor"/></svg><button id="theme-toggle" type="button" class="theme-toggle" aria-label="Switch to High Noon (light) theme" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true">dark_mode</span></button></div><div class="date-stamp"><div><span id="live-indicator" class="live-dot"></span><span id="clock">--:--</span> <span id="tz-name"></span></div><div id="today-label">Loading date...</div><div id="next-game-countdown" class="next-game-countdown" aria-live="polite">Next game: checking schedule...</div></div></header>
         <main>
             <section aria-labelledby="weather-heading"><p class="section-label" id="weather-heading">Weather / now</p><div class="weather-and-today"><div class="weather-grid">
                 <article class="panel weather-card" data-weather="parker"><div class="location-row"><div><div class="location">Parker <span class="weather-status" data-weather-status>Live</span><span class="last-updated" data-weather-updated></span></div><div class="state">COLORADO / 80138</div></div><div class="sun-mark"><span class="material-symbols-rounded weather-icon">clear_day</span></div></div><div class="condition">Clear skies · feels like 49°</div><div class="temperature">52<sup>°F</sup></div><div class="weather-meta"><span>HIGH <strong>58°</strong></span><span>LOW <strong>38°</strong></span><span>WIND <strong>6 mph</strong><span class="material-symbols-rounded wind-arrow" data-wind-arrow aria-hidden="true">north</span></span></div><div class="hourly-strip" data-hourly aria-label="Next 12 hours"></div><div class="sun-times" data-suntimes><span>Sunrise --</span><span>Sunset --</span></div></article>
