@@ -37,8 +37,7 @@
           --well:#0d131a; --panel-grad-1:rgba(26,34,45,.96); --panel-grad-2:rgba(17,22,29,.96);
           --alert-bg:rgba(255,110,90,.14); --alert-border:rgba(255,110,90,.4); --alert-ink:#ffcac4;
           --live-bg:rgba(79,216,196,.14); --live-border:rgba(79,216,196,.4); --live-ink:#d7f5ef;
-          --team-cardinals:var(--coral); --team-asu:#e85d3f; --team-ua:#d9234b; --team-suns:#f27a31;
-          --team-unm:#b8285f; --team-nmsu:#c17817; --team-nau:#2b6cb0; }
+          --team-cardinals:var(--coral); --team-asu:#e85d3f; --team-ua:#d9234b; --team-suns:#f27a31; }
         :root[data-theme="light"] { --ink:#1b2420; --muted:#5b665f; --faint:#5f6a63; --bg:#f5f2ea; --panel:#ffffff; --panel-raised:#eef0eb; --line:#dde1db; --blue:#1c5fb0; --yellow:#8a5e04; --coral:#c1402a; --teal:#0a7d6c;
           --well:#eef0eb; --panel-grad-1:rgba(255,255,255,.98); --panel-grad-2:rgba(238,240,235,.98);
           --alert-bg:rgba(193,64,42,.1); --alert-border:rgba(193,64,42,.35); --alert-ink:#7a2416;
@@ -169,16 +168,12 @@
         .is-today .calendar-day-number { color:var(--teal); font-weight:500; }
         .calendar-event { border-left:2px solid var(--coral); background:var(--panel-raised); border-radius:3px; padding:5px 28px 6px 5px; margin-top:4px; overflow:hidden; position:relative; }
         .calendar-event[data-team="suns"] { border-left-color:var(--team-suns); } .calendar-event[data-team="asu"] { border-left-color:var(--team-asu); } .calendar-event[data-team="ua"] { border-left-color:var(--team-ua); }
-        .calendar-event[data-team="unm"] { border-left-color:var(--team-unm); } .calendar-event[data-team="nmsu"] { border-left-color:var(--team-nmsu); } .calendar-event[data-team="nau"] { border-left-color:var(--team-nau); }
         .team-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; }
         .team-legend span { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font:9px 'IBM Plex Mono',monospace; }
         .team-legend i { width:8px; height:8px; border-radius:50%; display:block; background:var(--team-cardinals); }
         .team-legend span[data-team="asu"] i { background:var(--team-asu); }
         .team-legend span[data-team="ua"] i { background:var(--team-ua); }
         .team-legend span[data-team="suns"] i { background:var(--team-suns); }
-        .team-legend span[data-team="unm"] i { background:var(--team-unm); }
-        .team-legend span[data-team="nmsu"] i { background:var(--team-nmsu); }
-        .team-legend span[data-team="nau"] i { background:var(--team-nau); }
         .standings-strip { display:flex; flex-wrap:wrap; gap:8px; }
         .standings-entry { display:flex; align-items:center; gap:8px; padding:7px 10px; border:1px solid var(--line); border-radius:7px; background:var(--panel-raised); }
         .standings-logo { width:22px; height:22px; object-fit:contain; flex-shrink:0; }
@@ -293,7 +288,7 @@
                 <article class="panel weather-card" data-weather="flagstaff"><div class="location-row"><div><div class="location">Flagstaff <span class="weather-status" data-weather-status>Live</span><span class="last-updated" data-weather-updated></span></div><div class="state">ARIZONA / 86001</div></div><div class="sun-mark"><span class="material-symbols-rounded weather-icon">clear_day</span></div></div><div class="condition">Clear skies · feels like 65°</div><div class="temperature">67<sup>°F</sup></div><div class="weather-meta"><span>HIGH <strong>74°</strong></span><span>LOW <strong>44°</strong></span><span>WIND <strong>10 mph</strong><span class="material-symbols-rounded wind-arrow" data-wind-arrow aria-hidden="true">north</span></span></div><div class="hourly-strip" data-hourly aria-label="Next 12 hours"></div><div class="sun-times" data-suntimes><span>Sunrise --</span><span>Sunset --</span></div></article>
                 <article class="panel weather-card" data-weather="lascruces"><div class="location-row"><div><div class="location">Las Cruces <span class="weather-status" data-weather-status>Live</span><span class="last-updated" data-weather-updated></span></div><div class="state">NEW MEXICO / 88001</div></div><div class="sun-mark" style="color:var(--coral)"><span class="material-symbols-rounded weather-icon">clear_day</span></div></div><div class="condition">Sunny · feels like 82°</div><div class="temperature">84<sup>°F</sup></div><div class="weather-meta"><span>HIGH <strong>90°</strong></span><span>LOW <strong>62°</strong></span><span>WIND <strong>8 mph</strong><span class="material-symbols-rounded wind-arrow" data-wind-arrow aria-hidden="true">north</span></span></div><div class="hourly-strip" data-hourly aria-label="Next 12 hours"></div><div class="sun-times" data-suntimes><span>Sunrise --</span><span>Sunset --</span></div></article>
             </div><aside class="panel today-games" aria-labelledby="today-games-title"><h2 class="today-games-title" id="today-games-title">Today’s games</h2><div class="today-games-date" id="today-games-date">MST · loading</div><div id="today-games-list"><p class="today-empty">Checking the schedule...</p></div></aside></div><div class="panel forecast-panel"><div class="card-top"><p class="section-label" style="margin:0">10-day outlook</p><div class="forecast-tabs" role="tablist"><button class="active" data-location="parker" role="tab">Parker</button><button data-location="tempe" role="tab">Tempe</button><button data-location="glendale" role="tab">Glendale</button><button data-location="tucson" role="tab">Tucson</button><button data-location="albuquerque" role="tab">Albuquerque</button><button data-location="flagstaff" role="tab">Flagstaff</button><button data-location="lascruces" role="tab">Las Cruces</button></div></div><div id="forecast-list" class="forecast-list" aria-live="polite"></div></div></section>
-            <section aria-labelledby="sports-heading"><p class="section-label" id="sports-heading">Schedules / upcoming</p><div class="panel agenda"><div class="agenda-head"><div><h2 class="agenda-title">On the calendar</h2><div class="agenda-subtitle">Football & basketball · 2026–27 season</div></div><div class="agenda-tools"><span id="source-status" class="source-status">Loading games...</span><span id="sports-updated" class="last-updated"></span><button id="refresh-sports" class="refresh-button" type="button">Refresh</button></div></div><div class="filter" role="group" aria-label="Filter games"><button class="active" data-filter="all">All games</button><button data-filter="football">Football</button><button data-filter="basketball">Basketball</button></div><div class="team-legend" aria-hidden="true"><span data-team="cardinals"><i></i>Cardinals</span><span data-team="asu"><i></i>Sun Devils</span><span data-team="ua"><i></i>Wildcats</span><span data-team="suns"><i></i>Suns</span><span data-team="unm"><i></i>Lobos</span><span data-team="nmsu"><i></i>Aggies</span><span data-team="nau"><i></i>Lumberjacks</span></div><p class="section-label" style="margin:14px 0 8px">Conference standings</p><div id="standings-strip" class="standings-strip" aria-live="polite"></div><div class="calendar-heading"><h3 id="calendar-month-title" class="month-title" style="margin:0">Loading month...</h3><div class="calendar-nav" aria-label="Change visible month"><button id="today-month" type="button" hidden>Today</button><button id="previous-month" type="button" aria-label="Previous month">&#8592;</button><button id="next-month" type="button" aria-label="Next month">&#8594;</button></div></div><div id="selected-day-games" class="selected-day-games" hidden aria-live="polite" aria-atomic="true"></div><div id="schedule" class="schedule"></div></div></section>
+            <section aria-labelledby="sports-heading"><p class="section-label" id="sports-heading">Schedules / upcoming</p><div class="panel agenda"><div class="agenda-head"><div><h2 class="agenda-title">On the calendar</h2><div class="agenda-subtitle">Football & basketball · 2026–27 season</div></div><div class="agenda-tools"><span id="source-status" class="source-status">Loading games...</span><span id="sports-updated" class="last-updated"></span><button id="refresh-sports" class="refresh-button" type="button">Refresh</button></div></div><div class="filter" role="group" aria-label="Filter games"><button class="active" data-filter="all">All games</button><button data-filter="football">Football</button><button data-filter="basketball">Basketball</button></div><div class="team-legend" aria-hidden="true"><span data-team="cardinals"><i></i>Cardinals</span><span data-team="asu"><i></i>Sun Devils</span><span data-team="ua"><i></i>Wildcats</span><span data-team="suns"><i></i>Suns</span></div><p class="section-label" style="margin:14px 0 8px">Conference standings</p><div id="standings-strip" class="standings-strip" aria-live="polite"></div><div class="calendar-heading"><h3 id="calendar-month-title" class="month-title" style="margin:0">Loading month...</h3><div class="calendar-nav" aria-label="Change visible month"><button id="today-month" type="button" hidden>Today</button><button id="previous-month" type="button" aria-label="Previous month">&#8592;</button><button id="next-month" type="button" aria-label="Next month">&#8594;</button></div></div><div id="selected-day-games" class="selected-day-games" hidden aria-live="polite" aria-atomic="true"></div><div id="schedule" class="schedule"></div></div></section>
         </main>
         <footer>Weather is live · schedules show live ESPN data where available, with fallback rows for unpublished feeds · all game times shown in Mountain Time</footer>
     </div>
@@ -322,19 +317,15 @@
                 cardinals: 'https://a.espncdn.com/i/teamlogos/nfl/500/ari.png',
                 asu: 'https://a.espncdn.com/i/teamlogos/ncaa/500/9.png',
                 ua: 'https://a.espncdn.com/i/teamlogos/ncaa/500/12.png',
-                suns: 'https://a.espncdn.com/i/teamlogos/nba/500/phx.png',
-                unm: 'https://a.espncdn.com/i/teamlogos/ncaa/500/167.png',
-                nmsu: 'https://a.espncdn.com/i/teamlogos/ncaa/500/166.png',
-                nau: 'https://a.espncdn.com/i/teamlogos/ncaa/500/2464.png'
+                suns: 'https://a.espncdn.com/i/teamlogos/nba/500/phx.png'
             },
             // Conference "group" IDs, per ESPN's standings endpoint — verified against
             // live data (teams/{id} -> .groups.id) rather than guessed. Arizona State
             // and Arizona share the same group in both sports (both moved to the Big 12
-            // in the 2024 realignment); the three Southwest additions are each in a
-            // different conference. Used by loadStandings() below.
+            // in the 2024 realignment). Used by loadStandings() below.
             standingsGroups: {
-                football: { asu: '4', ua: '4', unm: '17', nmsu: '12', nau: '20' },
-                basketball: { asu: '8', ua: '8', unm: '44', nmsu: '11', nau: '5' }
+                football: { asu: '4', ua: '4' },
+                basketball: { asu: '8', ua: '8' }
             }
         };
 
@@ -347,8 +338,8 @@
         // verified against live ESPN data (see PUNCHLIST.md #7), shared by
         // rivalry detection (matching an opponent by id) and standings
         // (matching this team's own entry within its conference's response).
-        const COLLEGE_TEAM_ID_BY_KEY = { asu: '9', ua: '12', unm: '167', nmsu: '166', nau: '2464' };
-        const STANDINGS_TEAM_LABEL = { asu: 'Sun Devils', ua: 'Wildcats', unm: 'Lobos', nmsu: 'Aggies', nau: 'Lumberjacks' };
+        const COLLEGE_TEAM_ID_BY_KEY = { asu: '9', ua: '12' };
+        const STANDINGS_TEAM_LABEL = { asu: 'Sun Devils', ua: 'Wildcats' };
 
         const sportsFeeds = [
             { sport: 'football', team: 'Arizona Cardinals', teamId: '22', teamKey: 'cardinals',
@@ -362,22 +353,7 @@
             { sport: 'basketball', team: 'Arizona State', teamId: '9', teamKey: 'asu',
               url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/9/schedule?season=${CONFIG.basketballSeason}&seasontype=2` },
             { sport: 'basketball', team: 'Arizona Wildcats', teamId: '12', teamKey: 'ua',
-              url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/12/schedule?season=${CONFIG.basketballSeason}&seasontype=2` },
-            { sport: 'football', team: 'New Mexico Lobos', teamId: '167', teamKey: 'unm',
-              url: `https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/167/schedule?season=${CONFIG.footballSeason}&seasontype=2` },
-            { sport: 'football', team: 'New Mexico State Aggies', teamId: '166', teamKey: 'nmsu',
-              url: `https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/166/schedule?season=${CONFIG.footballSeason}&seasontype=2` },
-            // Northern Arizona is FCS (Big Sky), not FBS like the rest of this list —
-            // verified this same teams/{id}/schedule path still returns real,
-            // well-formed data for an FCS team (no separate endpoint needed).
-            { sport: 'football', team: 'Northern Arizona Lumberjacks', teamId: '2464', teamKey: 'nau',
-              url: `https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/2464/schedule?season=${CONFIG.footballSeason}&seasontype=2` },
-            { sport: 'basketball', team: 'New Mexico Lobos', teamId: '167', teamKey: 'unm',
-              url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/167/schedule?season=${CONFIG.basketballSeason}&seasontype=2` },
-            { sport: 'basketball', team: 'New Mexico State Aggies', teamId: '166', teamKey: 'nmsu',
-              url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/166/schedule?season=${CONFIG.basketballSeason}&seasontype=2` },
-            { sport: 'basketball', team: 'Northern Arizona Lumberjacks', teamId: '2464', teamKey: 'nau',
-              url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/2464/schedule?season=${CONFIG.basketballSeason}&seasontype=2` }
+              url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/12/schedule?season=${CONFIG.basketballSeason}&seasontype=2` }
         ];
 
         // ---------------------------------------------------------------------------
@@ -880,10 +856,7 @@
         // here; it doesn't touch the render paths that call isRivalryGame().
         // ---------------------------------------------------------------------------
         const RIVALRY_PAIRS = [
-            ['asu', 'ua'],    // Territorial Cup
-            ['asu', 'nau'],   // in-state (Arizona trio)
-            ['ua', 'nau'],    // in-state (Arizona trio)
-            ['nmsu', 'unm']   // Rio Grande Rivalry
+            ['asu', 'ua']    // Territorial Cup
         ];
         function isRivalryGame(game) {
             return RIVALRY_PAIRS.some(([a, b]) => {
@@ -1033,15 +1006,16 @@
                         'aria-label': `${date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}, ${dayGames.length} ${dayGames.length === 1 ? 'game' : 'games'}`
                     });
                     cell.appendChild(el('span', { className: 'calendar-day-number', text: String(day) }));
-                    // Cap how many game boxes render inline per day. With 7 teams now
-                    // sharing one calendar (was 4), a busy Saturday can stack several
-                    // games in one cell — earlier passes only hid secondary chips
-                    // *within* each event box, which doesn't bound how many boxes a
-                    // day can grow to. This caps the count and points to the existing
-                    // tap-for-detail panel (the whole cell is already a click target
-                    // that opens #selected-day-games with every game for that day),
-                    // so the fix scales to any number of same-day games rather than
-                    // needing another pass once more teams land.
+                    // Cap how many game boxes render inline per day. This calendar has
+                    // shared a busy Saturday across as many as 7 tracked teams at one
+                    // point (since scaled back down to reduce clutter) — earlier passes
+                    // only hid secondary chips *within* each event box, which doesn't
+                    // bound how many boxes a day can grow to. This caps the count and
+                    // points to the existing tap-for-detail panel (the whole cell is
+                    // already a click target that opens #selected-day-games with every
+                    // game for that day), so the fix scales to any number of same-day
+                    // games rather than needing another pass whenever the tracked-team
+                    // count changes again.
                     const visibleDayGames = dayGames.slice(0, MAX_INLINE_CALENDAR_EVENTS);
                     visibleDayGames.forEach(g => cell.appendChild(buildCalendarEvent(g)));
                     const overflowCount = dayGames.length - visibleDayGames.length;
@@ -1424,9 +1398,11 @@
         // team id.
         //
         // Two off-season cases are expected, not errors: an FCS group
-        // (Northern Arizona, Big Sky) silently returns zeroed stats unless
-        // `seasontype=2` is passed explicitly — verified, so it's always
-        // included here — and a not-yet-started season (this app's
+        // silently returns zeroed stats unless `seasontype=2` is passed
+        // explicitly — verified (during development, against Northern
+        // Arizona's Big Sky group, before that team was later dropped from
+        // tracking to reduce clutter), so it's always included here — and a
+        // not-yet-started season (this app's
         // basketball season hasn't tipped off yet as of when this was built)
         // returns a response with no `standings` key at all. Either case
         // just omits that team/sport from the display rather than guessing

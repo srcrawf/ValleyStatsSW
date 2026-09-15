@@ -7,9 +7,15 @@ Colorado/Arizona weather pair into a seven-city Southwest spread.
 
 **All 7 items below are done.** This file is kept as a record of what was
 built and the open questions each item raised along the way, in case any of
-those decisions need revisiting later (e.g. real logos/branding, verifying
-NAU's basketball schedule once its season starts, tuning the standings
-display once more of the season has been played).
+those decisions need revisiting later (e.g. real logos/branding, tuning the
+standings display once more of the season has been played).
+
+**Update:** UNM, NMSU, and NAU (item #7's new teams) were later removed from
+sports tracking by request — the calendar/today's-games/standings had gotten
+cluttered with 7 teams sharing one view. Item #7 below is left as a record of
+that work in case it's ever added back; item #6 (the weather cities for
+Albuquerque, Flagstaff, and Las Cruces) was explicitly kept, since the ask
+was to declutter the sports side, not drop the weather coverage.
 
 ## 1. Light theme ("High Noon") — done
 

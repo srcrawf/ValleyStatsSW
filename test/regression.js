@@ -232,36 +232,35 @@ setTimeout(() => {
                 document.querySelector(\`[data-weather="\${key}"]\`) && document.querySelector(\`[data-location="\${key}"]\`))`),
             true);
 
-        // --- new teams: UNM, NMSU, NAU tracked for both sports, same as ASU/UA ---
-        check('sportsFeeds tracks UNM, NMSU, and NAU for both football and basketball, with verified ESPN ids',
-            run(`(() => {
-                const expected = { unm: '167', nmsu: '166', nau: '2464' };
-                return Object.entries(expected).every(([key, id]) =>
-                    ['football', 'basketball'].every(sport =>
-                        sportsFeeds.some(f => f.teamKey === key && f.sport === sport && f.teamId === id)));
-            })()`),
+        // --- UNM, NMSU, and NAU were tracked for a while (PUNCHLIST.md #7)
+        // but were later removed by request to reduce clutter — only the
+        // weather cities for those states/that state stayed. Guard against
+        // them silently creeping back into the tracked-team config. ---
+        check('UNM, NMSU, and NAU are not tracked in sportsFeeds (removed to reduce clutter; only ASU/UA remain as college teams)',
+            run(`!sportsFeeds.some(f => ['unm', 'nmsu', 'nau'].includes(f.teamKey))`),
             true);
-        check('teamLogos has an entry for each new team',
-            run(`['unm', 'nmsu', 'nau'].every(k => typeof teamLogos[k] === 'string' && teamLogos[k].length > 0)`),
+        check('teamLogos has no leftover entries for the removed teams',
+            run(`!['unm', 'nmsu', 'nau'].some(k => k in teamLogos)`),
             true);
-        check('CONFIG.standingsGroups has a verified conference group id for every college team, both sports',
-            run(`(() => {
-                const teams = ['asu', 'ua', 'unm', 'nmsu', 'nau'];
-                return ['football', 'basketball'].every(sport =>
-                    teams.every(t => typeof CONFIG.standingsGroups[sport][t] === 'string' && CONFIG.standingsGroups[sport][t].length > 0));
-            })()`),
+        check('CONFIG.standingsGroups only covers the currently-tracked college teams (ASU/UA)',
+            run(`['football', 'basketball'].every(sport =>
+                Object.keys(CONFIG.standingsGroups[sport]).sort().join(',') === 'asu,ua')`),
             true);
 
         // --- rivalry highlighting: matched by the opponent's ESPN team id,
-        // not by display-name text (which varies by feed). ---
+        // not by display-name text (which varies by feed). Only the
+        // Territorial Cup (ASU vs Arizona) remains now that UNM/NMSU/NAU
+        // are no longer tracked — the Rio Grande and in-state Arizona-trio
+        // pairs that depended on them were removed along with those teams. ---
         run(`
             window.__territorialCup = { teamKey: 'asu', opponentTeamId: '12' };
-            window.__rioGrande = { teamKey: 'nmsu', opponentTeamId: '167' };
             window.__notARivalry = { teamKey: 'asu', opponentTeamId: '99999' };
         `);
         check('isRivalryGame flags ASU vs Arizona (Territorial Cup)', run(`isRivalryGame(window.__territorialCup)`), true);
-        check('isRivalryGame flags NMSU vs UNM (Rio Grande Rivalry)', run(`isRivalryGame(window.__rioGrande)`), true);
         check('isRivalryGame does not flag an unrelated matchup', run(`isRivalryGame(window.__notARivalry)`), false);
+        check('RIVALRY_PAIRS no longer references the removed teams',
+            run(`!RIVALRY_PAIRS.flat().some(k => ['unm', 'nmsu', 'nau'].includes(k))`),
+            true);
 
         // --- dedupeMutualGames: when two tracked teams play each other,
         // each side's own ESPN feed independently returns that same game —
@@ -278,7 +277,7 @@ setTimeout(() => {
                 opponent: '@ Arizona State', calendarDate: '2026-11-28', eventId: '401520000'
             };
             window.__unrelated = {
-                sport: 'football', teamKey: 'unm', opponentTeamId: '99999',
+                sport: 'football', teamKey: 'asu', opponentTeamId: '99999',
                 opponent: 'vs Some Non-Tracked Team', calendarDate: '2026-11-14', eventId: '401599999'
             };
             window.__dedupedByEventId = dedupeMutualGames([window.__mutualHome, window.__mutualAway, window.__unrelated]);
@@ -300,11 +299,13 @@ setTimeout(() => {
 
         // --- mobile/crowding fix: a busy day caps inline calendar-event boxes
         // and points to the existing tap-for-detail panel instead, so this
-        // scales to any number of same-day games (e.g. once 7 teams share
-        // one calendar) rather than needing another pass per team added. ---
+        // scales to any number of same-day games (regardless of how many
+        // teams are tracked at any given time) rather than needing another
+        // pass per team added. Uses synthetic team keys, decoupled from
+        // whichever teams are actually configured. ---
         run(`
             const busyDay = '2026-09-19';
-            games = ['asu', 'ua', 'unm', 'nmsu'].map((key, i) => ({
+            games = ['fakea', 'fakeb', 'fakec', 'faked'].map((key, i) => ({
                 teamKey: key, sport: 'football', calendarDate: busyDay,
                 dateValue: new Date('2026-09-19T00:00:00Z'), state: 'pre',
                 team: key.toUpperCase(), opponent: \`vs Test Opponent \${i}\`,
