@@ -320,6 +320,95 @@ setTimeout(() => {
         check('overflow games beyond the cap show a "+N more" indicator instead of just disappearing',
             run(`window.__busyCell.querySelector('.calendar-event-more')?.textContent`), '+2 more');
 
+        // --- finished games move out of the calendar grid and into the
+        // recent-results recap instead; a month left with nothing but
+        // finished games drops out of the calendar entirely, so navigation
+        // advances forward rather than still offering an empty past month. ---
+        run(`
+            window.__pastFinished = {
+                teamKey: 'asu', sport: 'football', calendarDate: '2026-09-05',
+                dateValue: new Date('2026-09-05T00:00:00Z'), state: 'post',
+                team: 'Arizona State', opponent: 'vs Morgan State', opponentShort: 'Morgan State',
+                time: '8:00 PM', status: 'Final', scoreText: 'ASU 48, Morgan State 7',
+                score: [{ name: 'Arizona State', score: 48, winner: true }, { name: 'Morgan State', score: 7, winner: false }]
+            };
+            window.__upcomingSameDay = {
+                teamKey: 'ua', sport: 'football', calendarDate: '2026-09-05',
+                dateValue: new Date('2026-09-05T00:00:00Z'), state: 'pre',
+                team: 'Arizona Wildcats', opponent: 'vs Test Opponent', opponentShort: 'Test Opp', time: 'TBD'
+            };
+            games = [window.__pastFinished, window.__upcomingSameDay];
+            renderGames('all');
+            updateCalendarMonth();
+            window.__mixedCell = document.querySelector('.calendar-cell[data-date="2026-09-05"]');
+        `);
+        check('finished games are hidden from the calendar grid (only the still-upcoming game on the same day renders inline)',
+            run(`window.__mixedCell.querySelectorAll('.calendar-event').length`), 1);
+        check('the one calendar-event box that does render is the upcoming game, not the finished one',
+            run(`window.__mixedCell.querySelector('.calendar-event strong')?.textContent`), 'Arizona Wildcats');
+
+        run(`
+            games = [window.__pastFinished];
+            renderGames('all');
+        `);
+        check('a day whose only game has already finished shows no calendar cell at all for that month (the month has nothing left to show)',
+            run(`document.querySelector('.calendar-cell[data-date="2026-09-05"]')`), null);
+        check('the schedule instead shows the "no games match" message rather than an empty calendar',
+            run(`document.querySelector('#schedule .empty')?.textContent`), 'No games match the selected filter.');
+
+        run(`
+            selectCalendarDay('2026-09-05');
+            window.__panelText = document.querySelector('#selected-day-games').textContent;
+        `);
+        check('the selected-day panel does not resurface a finished game on a day the calendar grid already hid it',
+            run(`window.__panelText.includes('No games scheduled')`), true);
+
+        run(`
+            window.__augFinished = {
+                teamKey: 'asu', sport: 'football', calendarDate: '2026-08-15',
+                dateValue: new Date('2026-08-15T00:00:00Z'), state: 'post',
+                team: 'Arizona State', opponent: 'vs Old Opponent', opponentShort: 'Old Opp',
+                time: 'TBD', status: 'Final', scoreText: 'ASU 20, Old Opp 10'
+            };
+            window.__octUpcoming = {
+                teamKey: 'asu', sport: 'football', calendarDate: '2026-10-10',
+                dateValue: new Date('2026-10-10T00:00:00Z'), state: 'pre',
+                team: 'Arizona State', opponent: 'vs Future Opponent', opponentShort: 'Future Opp', time: 'TBD'
+            };
+            games = [window.__augFinished, window.__octUpcoming];
+            renderGames('all');
+            updateCalendarMonth();
+            window.__monthTitles = [...document.querySelectorAll('#schedule .month-title')].map(t => t.textContent);
+        `);
+        check('a month whose only games have all finished drops out of the calendar entirely (advances forward)',
+            run(`window.__monthTitles.includes('AUGUST 2026')`), false);
+        check('a month that still has an upcoming game keeps its section',
+            run(`window.__monthTitles.includes('OCTOBER 2026')`), true);
+
+        // --- recent-results recap: grouped per team (mirrors the standings
+        // strip), separate from the calendar grid that just hid these. ---
+        run(`
+            games = [window.__pastFinished];
+            renderGames('all');
+            window.__asuResultsCard = document.querySelector('#recent-results .results-team[data-team="asu"]');
+            window.__cardinalsResultsCard = document.querySelector('#recent-results .results-team[data-team="cardinals"]');
+        `);
+        check('renderRecentResults shows a card for the team with its finished result (opponent name)',
+            run(`window.__asuResultsCard?.querySelector('.result-opponent')?.textContent`), 'Morgan State');
+        check('the result row is styled as a win, distinct from a loss',
+            run(`window.__asuResultsCard?.querySelector('.result-row')?.classList.contains('result-win')`), true);
+        check('a team with no finished games yet shows a plain "no results" message instead of an empty card',
+            run(`window.__cardinalsResultsCard?.querySelector('.results-empty')?.textContent`), 'No results yet this season.');
+        run(`
+            renderGames('basketball');
+            window.__cardinalsResultsCardFiltered = document.querySelector('#recent-results .results-team[data-team="cardinals"]');
+        `);
+        check('recent results respects the sport filter — a football-only team gets no card under the Basketball filter',
+            run(`window.__cardinalsResultsCardFiltered`), null);
+        run(`renderGames('all');`);
+        check('the sport-mark in a recent-results row stays in normal inline flow rather than escaping to the page corner',
+            run(`getComputedStyle(document.querySelector('#recent-results .result-row .sport-mark')).position`), 'static');
+
         // --- light theme ("High Noon") toggle ---
         check('page starts in the default Night Shift (dark) theme',
             run(`document.documentElement.dataset.theme`), undefined);

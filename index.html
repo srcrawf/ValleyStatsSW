@@ -180,6 +180,26 @@
         .standings-entry strong { display:block; color:var(--ink); font-size:10px; }
         .standings-entry span { display:block; color:var(--muted); font:9px 'IBM Plex Mono',monospace; margin-top:2px; }
         .standings-empty { color:var(--faint); font-size:11px; margin:0; }
+        /* Recent-results recap — grouped per team (one card each), mirroring
+           .standings-strip/.standings-entry's layout so the two summary
+           blocks read as one family, with a short list of that team's last
+           few finished games inside each card. */
+        .results-strip { display:flex; flex-wrap:wrap; gap:10px; }
+        .results-team { flex:1 1 200px; min-width:170px; padding:8px 10px; border:1px solid var(--line); border-radius:7px; background:var(--panel-raised); }
+        .results-team-head { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+        .results-logo { width:20px; height:20px; object-fit:contain; flex-shrink:0; }
+        .results-team-head strong { color:var(--ink); font-size:10px; }
+        .results-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px; }
+        .result-row { display:flex; align-items:baseline; gap:5px; }
+        /* The base .sport-mark rule positions it absolute for the calendar
+           box's corner badge (see the .today-game/.selected-day-game
+           override above) — cancel that back to inline flow here too. */
+        .result-row .sport-mark { position:static; display:inline; font-size:10px; }
+        .result-opponent { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font:500 9px 'IBM Plex Mono',monospace; }
+        .result-status { color:var(--coral); font:600 9px 'IBM Plex Mono',monospace; white-space:nowrap; }
+        .result-row.result-win .result-status { color:var(--teal); }
+        .result-date { color:var(--faint); font:9px 'IBM Plex Mono',monospace; white-space:nowrap; }
+        .results-empty { color:var(--faint); font-size:9px; font-family:'IBM Plex Mono',monospace; margin:0; }
         #today-month { width:auto; font:600 11px 'IBM Plex Mono',monospace; padding:0 10px; }
         .matchup-logos { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
         .team-logo { width:28px; height:28px; object-fit:contain; display:block; }
@@ -288,7 +308,7 @@
                 <article class="panel weather-card" data-weather="flagstaff"><div class="location-row"><div><div class="location">Flagstaff <span class="weather-status" data-weather-status>Live</span><span class="last-updated" data-weather-updated></span></div><div class="state">ARIZONA / 86001</div></div><div class="sun-mark"><span class="material-symbols-rounded weather-icon">clear_day</span></div></div><div class="condition">Clear skies · feels like 65°</div><div class="temperature">67<sup>°F</sup></div><div class="weather-meta"><span>HIGH <strong>74°</strong></span><span>LOW <strong>44°</strong></span><span>WIND <strong>10 mph</strong><span class="material-symbols-rounded wind-arrow" data-wind-arrow aria-hidden="true">north</span></span></div><div class="hourly-strip" data-hourly aria-label="Next 12 hours"></div><div class="sun-times" data-suntimes><span>Sunrise --</span><span>Sunset --</span></div></article>
                 <article class="panel weather-card" data-weather="lascruces"><div class="location-row"><div><div class="location">Las Cruces <span class="weather-status" data-weather-status>Live</span><span class="last-updated" data-weather-updated></span></div><div class="state">NEW MEXICO / 88001</div></div><div class="sun-mark" style="color:var(--coral)"><span class="material-symbols-rounded weather-icon">clear_day</span></div></div><div class="condition">Sunny · feels like 82°</div><div class="temperature">84<sup>°F</sup></div><div class="weather-meta"><span>HIGH <strong>90°</strong></span><span>LOW <strong>62°</strong></span><span>WIND <strong>8 mph</strong><span class="material-symbols-rounded wind-arrow" data-wind-arrow aria-hidden="true">north</span></span></div><div class="hourly-strip" data-hourly aria-label="Next 12 hours"></div><div class="sun-times" data-suntimes><span>Sunrise --</span><span>Sunset --</span></div></article>
             </div><aside class="panel today-games" aria-labelledby="today-games-title"><h2 class="today-games-title" id="today-games-title">Today’s games</h2><div class="today-games-date" id="today-games-date">MST · loading</div><div id="today-games-list"><p class="today-empty">Checking the schedule...</p></div></aside></div><div class="panel forecast-panel"><div class="card-top"><p class="section-label" style="margin:0">10-day outlook</p><div class="forecast-tabs" role="tablist"><button class="active" data-location="parker" role="tab">Parker</button><button data-location="tempe" role="tab">Tempe</button><button data-location="glendale" role="tab">Glendale</button><button data-location="tucson" role="tab">Tucson</button><button data-location="albuquerque" role="tab">Albuquerque</button><button data-location="flagstaff" role="tab">Flagstaff</button><button data-location="lascruces" role="tab">Las Cruces</button></div></div><div id="forecast-list" class="forecast-list" aria-live="polite"></div></div></section>
-            <section aria-labelledby="sports-heading"><p class="section-label" id="sports-heading">Schedules / upcoming</p><div class="panel agenda"><div class="agenda-head"><div><h2 class="agenda-title">On the calendar</h2><div class="agenda-subtitle">Football & basketball · 2026–27 season</div></div><div class="agenda-tools"><span id="source-status" class="source-status">Loading games...</span><span id="sports-updated" class="last-updated"></span><button id="refresh-sports" class="refresh-button" type="button">Refresh</button></div></div><div class="filter" role="group" aria-label="Filter games"><button class="active" data-filter="all">All games</button><button data-filter="football">Football</button><button data-filter="basketball">Basketball</button></div><div class="team-legend" aria-hidden="true"><span data-team="cardinals"><i></i>Cardinals</span><span data-team="asu"><i></i>Sun Devils</span><span data-team="ua"><i></i>Wildcats</span><span data-team="suns"><i></i>Suns</span></div><p class="section-label" style="margin:14px 0 8px">Conference standings</p><div id="standings-strip" class="standings-strip" aria-live="polite"></div><div class="calendar-heading"><h3 id="calendar-month-title" class="month-title" style="margin:0">Loading month...</h3><div class="calendar-nav" aria-label="Change visible month"><button id="today-month" type="button" hidden>Today</button><button id="previous-month" type="button" aria-label="Previous month">&#8592;</button><button id="next-month" type="button" aria-label="Next month">&#8594;</button></div></div><div id="selected-day-games" class="selected-day-games" hidden aria-live="polite" aria-atomic="true"></div><div id="schedule" class="schedule"></div></div></section>
+            <section aria-labelledby="sports-heading"><p class="section-label" id="sports-heading">Schedules / upcoming</p><div class="panel agenda"><div class="agenda-head"><div><h2 class="agenda-title">On the calendar</h2><div class="agenda-subtitle">Football & basketball · 2026–27 season</div></div><div class="agenda-tools"><span id="source-status" class="source-status">Loading games...</span><span id="sports-updated" class="last-updated"></span><button id="refresh-sports" class="refresh-button" type="button">Refresh</button></div></div><div class="filter" role="group" aria-label="Filter games"><button class="active" data-filter="all">All games</button><button data-filter="football">Football</button><button data-filter="basketball">Basketball</button></div><div class="team-legend" aria-hidden="true"><span data-team="cardinals"><i></i>Cardinals</span><span data-team="asu"><i></i>Sun Devils</span><span data-team="ua"><i></i>Wildcats</span><span data-team="suns"><i></i>Suns</span></div><p class="section-label" style="margin:14px 0 8px">Conference standings</p><div id="standings-strip" class="standings-strip" aria-live="polite"></div><p class="section-label" style="margin:14px 0 8px">Recent results</p><div id="recent-results" class="results-strip" aria-live="polite"></div><div class="calendar-heading"><h3 id="calendar-month-title" class="month-title" style="margin:0">Loading month...</h3><div class="calendar-nav" aria-label="Change visible month"><button id="today-month" type="button" hidden>Today</button><button id="previous-month" type="button" aria-label="Previous month">&#8592;</button><button id="next-month" type="button" aria-label="Next month">&#8594;</button></div></div><div id="selected-day-games" class="selected-day-games" hidden aria-live="polite" aria-atomic="true"></div><div id="schedule" class="schedule"></div></div></section>
         </main>
         <footer>Weather is live · schedules show live ESPN data where available, with fallback rows for unpublished feeds · all game times shown in Mountain Time</footer>
     </div>
@@ -340,6 +360,10 @@
         // (matching this team's own entry within its conference's response).
         const COLLEGE_TEAM_ID_BY_KEY = { asu: '9', ua: '12' };
         const STANDINGS_TEAM_LABEL = { asu: 'Sun Devils', ua: 'Wildcats' };
+        // Short mascot-style label for every tracked team (not just the
+        // college ones STANDINGS_TEAM_LABEL covers) — used by the recent-
+        // results recap, grouped per team like the team legend above it.
+        const TEAM_LABEL = { cardinals: 'Cardinals', asu: 'Sun Devils', ua: 'Wildcats', suns: 'Suns' };
 
         const sportsFeeds = [
             { sport: 'football', team: 'Arizona Cardinals', teamId: '22', teamKey: 'cardinals',
@@ -788,7 +812,10 @@
         function renderSelectedDayGames() {
             const panel = document.querySelector('#selected-day-games');
             if (!panel || !selectedDayKey) return;
-            const dayGames = games.filter(g => gameCalendarKey(g) === selectedDayKey);
+            // Matches renderGames: a day whose only game(s) already finished
+            // shows as empty here too, rather than the detail panel
+            // resurfacing a result the calendar grid just hid.
+            const dayGames = games.filter(g => gameCalendarKey(g) === selectedDayKey && !hasGameEnded(g));
             const selectedDate = new Date(`${selectedDayKey}T12:00:00Z`);
             panel.hidden = false;
             clearNode(panel);
@@ -945,7 +972,15 @@
 
         function renderGames(filter) {
             computeNextGameByTeamSport();
-            const visible = games.filter(g => filter === 'all' || g.sport === filter);
+            // Finished games no longer clutter the calendar grid — once a
+            // game is Final it moves to the recent-results recap instead
+            // (renderRecentResults), so the grid only ever shows what's
+            // still ahead (plus anything live right now). A month left with
+            // nothing but finished games simply has no games here and drops
+            // out of the grouped map below, which is what lets month
+            // navigation advance forward automatically instead of still
+            // offering now-empty past months.
+            const visible = games.filter(g => (filter === 'all' || g.sport === filter) && !hasGameEnded(g));
             const grouped = new Map();
             visible.forEach(game => {
                 const gameKey = gameCalendarKey(game);
@@ -959,6 +994,7 @@
 
             const scheduleEl = document.querySelector('#schedule');
             clearNode(scheduleEl);
+            renderRecentResults(filter);
 
             if (!grouped.size) {
                 scheduleEl.appendChild(el('p', { className: 'empty', text: 'No games match the selected filter.' }));
@@ -1153,6 +1189,64 @@
                 article.appendChild(infoLine);
                 appendGameMeta(article, game);
                 list.appendChild(article);
+            });
+        }
+
+        // A game only counts as "ended" once it's Final — a live ('in')
+        // game is still ongoing and stays visible everywhere else (the
+        // calendar grid, today's games), it just doesn't show up here yet.
+        function hasGameEnded(game) {
+            return game.state === 'post';
+        }
+
+        const RECENT_RESULTS_PER_TEAM = 3;
+
+        // Recap of each tracked team's last few finished games, grouped per
+        // team (mirrors the standings strip above it) rather than one mixed
+        // chronological list, so e.g. the Cardinals' last result doesn't get
+        // buried under three Sun Devils games from the same week. This is
+        // also where a finished game "goes" once buildCalendarEvent's
+        // calendar-grid month view stops showing it (see renderGames) —
+        // completed games move here instead of lingering in the calendar.
+        function renderRecentResults(filter) {
+            const strip = document.querySelector('#recent-results');
+            if (!strip) return;
+            clearNode(strip);
+            const teamKeys = Object.keys(teamLogos).filter(teamKey =>
+                filter === 'all' || sportsFeeds.some(f => f.teamKey === teamKey && f.sport === filter));
+            teamKeys.forEach(teamKey => {
+                const results = games
+                    .filter(g => g.teamKey === teamKey && hasGameEnded(g) && (filter === 'all' || g.sport === filter))
+                    .sort((a, b) => b.dateValue - a.dateValue)
+                    .slice(0, RECENT_RESULTS_PER_TEAM);
+
+                const card = el('div', { className: 'results-team', dataset: { team: teamKey } });
+                const head = el('div', { className: 'results-team-head' });
+                const logoSrc = safeImageUrl(teamLogos[teamKey]);
+                if (logoSrc) head.appendChild(el('img', { className: 'results-logo', src: logoSrc, alt: '', loading: 'lazy' }));
+                head.appendChild(el('strong', { text: TEAM_LABEL[teamKey] || teamKey }));
+                card.appendChild(head);
+
+                if (!results.length) {
+                    card.appendChild(el('p', { className: 'results-empty', text: 'No results yet this season.' }));
+                } else {
+                    const list = el('ul', { className: 'results-list' });
+                    results.forEach(game => {
+                        const row = el('li', { className: `result-row${didWin(game) ? ' result-win' : ''}` });
+                        if (sportMark(game.sport)) {
+                            row.appendChild(el('span', { className: 'sport-mark', 'aria-label': `${game.sport} game`, text: sportMark(game.sport) }));
+                        }
+                        row.appendChild(el('span', { className: 'result-opponent', text: game.opponentShort || opponentName(game) }));
+                        row.appendChild(el('span', { className: 'result-status', text: gameSummary(game) }));
+                        row.appendChild(el('span', {
+                            className: 'result-date',
+                            text: game.dateValue.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        }));
+                        list.appendChild(row);
+                    });
+                    card.appendChild(list);
+                }
+                strip.appendChild(card);
             });
         }
 
