@@ -323,24 +323,32 @@ setTimeout(() => {
         // --- finished games move out of the calendar grid and into the
         // recent-results recap instead; a month left with nothing but
         // finished games drops out of the calendar entirely, so navigation
-        // advances forward rather than still offering an empty past month. ---
+        // advances forward rather than still offering an empty past month.
+        // Uses today's own date (computed at test-run time, not a hardcoded
+        // 2026 date) so this stays valid regardless of when the suite runs
+        // and specifically isolates "finished games are hidden" from the
+        // separate past-week-trimming behavior tested further below —
+        // today is always in the current, never-trimmed week. ---
         run(`
+            window.__todayKeyForCalendar = new Intl.DateTimeFormat('en-CA', {
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(new Date());
             window.__pastFinished = {
-                teamKey: 'asu', sport: 'football', calendarDate: '2026-09-05',
-                dateValue: new Date('2026-09-05T00:00:00Z'), state: 'post',
+                teamKey: 'asu', sport: 'football', calendarDate: window.__todayKeyForCalendar,
+                dateValue: new Date(), state: 'post',
                 team: 'Arizona State', opponent: 'vs Morgan State', opponentShort: 'Morgan State',
                 time: '8:00 PM', status: 'Final', scoreText: 'ASU 48, Morgan State 7',
                 score: [{ name: 'Arizona State', score: 48, winner: true }, { name: 'Morgan State', score: 7, winner: false }]
             };
             window.__upcomingSameDay = {
-                teamKey: 'ua', sport: 'football', calendarDate: '2026-09-05',
-                dateValue: new Date('2026-09-05T00:00:00Z'), state: 'pre',
+                teamKey: 'ua', sport: 'football', calendarDate: window.__todayKeyForCalendar,
+                dateValue: new Date(), state: 'pre',
                 team: 'Arizona Wildcats', opponent: 'vs Test Opponent', opponentShort: 'Test Opp', time: 'TBD'
             };
             games = [window.__pastFinished, window.__upcomingSameDay];
             renderGames('all');
             updateCalendarMonth();
-            window.__mixedCell = document.querySelector('.calendar-cell[data-date="2026-09-05"]');
+            window.__mixedCell = document.querySelector(\`.calendar-cell[data-date="\${window.__todayKeyForCalendar}"]\`);
         `);
         check('finished games are hidden from the calendar grid (only the still-upcoming game on the same day renders inline)',
             run(`window.__mixedCell.querySelectorAll('.calendar-event').length`), 1);
@@ -352,12 +360,12 @@ setTimeout(() => {
             renderGames('all');
         `);
         check('a day whose only game has already finished shows no calendar cell at all for that month (the month has nothing left to show)',
-            run(`document.querySelector('.calendar-cell[data-date="2026-09-05"]')`), null);
+            run(`document.querySelector(\`.calendar-cell[data-date="\${window.__todayKeyForCalendar}"]\`)`), null);
         check('the schedule instead shows the "no games match" message rather than an empty calendar',
             run(`document.querySelector('#schedule .empty')?.textContent`), 'No games match the selected filter.');
 
         run(`
-            selectCalendarDay('2026-09-05');
+            selectCalendarDay(window.__todayKeyForCalendar);
             window.__panelText = document.querySelector('#selected-day-games').textContent;
         `);
         check('the selected-day panel does not resurface a finished game on a day the calendar grid already hid it',
@@ -384,6 +392,60 @@ setTimeout(() => {
             run(`window.__monthTitles.includes('AUGUST 2026')`), false);
         check('a month that still has an upcoming game keeps its section',
             run(`window.__monthTitles.includes('OCTOBER 2026')`), true);
+
+        // --- past-week trimming within a month's own grid: full weeks that
+        // ended before the current week are dropped (offset cells and all),
+        // so the current week becomes the grid's first content row instead
+        // of leaving empty past weeks stacked above it. "Now" is frozen for
+        // this check (real Date restored immediately after) so the trim
+        // math is deterministic regardless of when the suite actually runs. ---
+        run(`
+            window.__RealDate = Date;
+            class FixedDate extends window.__RealDate {
+                constructor(...args) {
+                    if (args.length === 0) return super('2026-09-19T12:00:00');
+                    return super(...args);
+                }
+                static now() { return new window.__RealDate('2026-09-19T12:00:00').getTime(); }
+            }
+            Date = FixedDate; // frozen "now": Saturday, September 19 2026
+            games = [{
+                teamKey: 'asu', sport: 'football', calendarDate: '2026-09-06',
+                dateValue: new window.__RealDate('2026-09-06T00:00:00'), state: 'pre',
+                team: 'Arizona State', opponent: 'vs Early September Opponent', opponentShort: 'Early Sep', time: 'TBD'
+            }, {
+                teamKey: 'asu', sport: 'football', calendarDate: '2026-09-24',
+                dateValue: new window.__RealDate('2026-09-24T00:00:00'), state: 'pre',
+                team: 'Arizona State', opponent: 'vs Late September Opponent', opponentShort: 'Late Sep', time: 'TBD'
+            }];
+            renderGames('all');
+            updateCalendarMonth();
+            window.__trimmedGrid = document.querySelector('#schedule section .month-grid');
+            window.__earlySepCell = document.querySelector('.calendar-cell[data-date="2026-09-06"]');
+            window.__currentWeekSundayCell = document.querySelector('.calendar-cell[data-date="2026-09-13"]');
+            window.__lateSepCell = document.querySelector('.calendar-cell[data-date="2026-09-24"]');
+            // 7 weekday-header divs come first, then day content.
+            window.__firstContentCell = window.__trimmedGrid?.children[7];
+            Date = window.__RealDate;
+        `);
+        check('a day in a fully-elapsed past week (Sept 6, two Sundays before the frozen "now") has no calendar cell at all',
+            run(`window.__earlySepCell`), null);
+        check(`the current week's Sunday (Sept 13) still gets a cell even with no game of its own — the whole current week is kept`,
+            run(`!!window.__currentWeekSundayCell`), true);
+        check(`the current week becomes the grid's first content row — no leftover empty-placeholder cell renders before it`,
+            run(`window.__firstContentCell?.dataset.date`), '2026-09-13');
+        check('a day in a later week (Sept 24) still renders normally',
+            run(`!!window.__lateSepCell`), true);
+
+        // --- daysBetween: the helper the trim above relies on — plain
+        // whole-day counting, and specifically safe across a US DST
+        // transition (spring-forward is March 8, 2026), which is exactly
+        // the kind of off-by-one bug this local-noon normalization avoids. ---
+        check('daysBetween counts whole days between two local dates',
+            run(`daysBetween(new Date(2026, 8, 5), new Date(2026, 8, 19))`), 14);
+        check('daysBetween returns 0 for the same date', run(`daysBetween(new Date(2026, 8, 5), new Date(2026, 8, 5))`), 0);
+        check('daysBetween is unaffected by a DST transition falling inside the range',
+            run(`daysBetween(new Date(2026, 2, 1), new Date(2026, 2, 31))`), 30);
 
         // --- recent-results recap: grouped per team (mirrors the standings
         // strip), separate from the calendar grid that just hid these. ---

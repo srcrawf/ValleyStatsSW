@@ -568,6 +568,17 @@
         function calendarDateKey(year, month, day) {
             return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         }
+        // Whole calendar days between two local-midnight Date objects,
+        // b minus a. Re-normalizes both to local noon first rather than
+        // subtracting raw midnight timestamps, so a DST transition falling
+        // between the two dates (a single 23- or 25-hour day) can't throw
+        // the day count off by one — used by renderGames to figure out how
+        // many full weeks of a month's grid are already in the past.
+        function daysBetween(a, b) {
+            const an = new Date(a.getFullYear(), a.getMonth(), a.getDate(), 12);
+            const bn = new Date(b.getFullYear(), b.getMonth(), b.getDate(), 12);
+            return Math.round((bn - an) / 86400000);
+        }
         function gameCalendarKey(game) {
             if (game.calendarDate) return game.calendarDate;
             if (game.date) return game.date;
@@ -1002,6 +1013,13 @@
                 return;
             }
 
+            // Sunday of the current real-world week — any grid row entirely
+            // before this is a fully-elapsed past week, trimmed below so the
+            // current week becomes the top content row instead of leaving
+            // empty past weeks stacked above it.
+            const now = new Date();
+            const currentWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+
             [...grouped.values()].sort((a, b) => a.date - b.date).forEach(group => {
                 const year = group.date.getFullYear();
                 const month = group.date.getMonth();
@@ -1024,12 +1042,25 @@
                     grid.appendChild(el('div', { className: 'weekday', text: d }));
                 });
 
-                for (let i = 0; i < firstDay; i++) {
-                    grid.appendChild(el('div', { className: 'calendar-cell is-empty', 'aria-hidden': 'true' }));
-                }
+                // firstGridDate is the Sunday that starts day 1's week (JS's
+                // Date constructor rolls a negative day back into the
+                // previous month for us). Counting off 7-day chunks from
+                // there to currentWeekStart tells us how many complete
+                // leading weeks — offset cells included — to skip; a future
+                // month (currentWeekStart earlier than the month itself)
+                // clamps to 0 skipped weeks, i.e. no trimming.
+                const firstGridDate = new Date(year, month, 1 - firstDay);
+                const weeksToSkip = Math.max(0, Math.floor(daysBetween(firstGridDate, currentWeekStart) / 7));
+                const totalCells = firstDay + daysInMonth;
+                const skipCells = Math.min(weeksToSkip * 7, totalCells);
 
                 const todayParts = calendarParts(new Date());
-                for (let day = 1; day <= daysInMonth; day++) {
+                for (let idx = skipCells; idx < totalCells; idx++) {
+                    if (idx < firstDay) {
+                        grid.appendChild(el('div', { className: 'calendar-cell is-empty', 'aria-hidden': 'true' }));
+                        continue;
+                    }
+                    const day = idx - firstDay + 1;
                     const date = new Date(year, month, day);
                     const dayGames = eventDays.get(day) || [];
                     const dayKey = calendarDateKey(year, month, day);
