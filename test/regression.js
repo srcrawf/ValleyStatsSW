@@ -187,12 +187,13 @@ setTimeout(() => {
             run(`window.getComputedStyle(document.querySelector('.today-game .sport-mark')).position`),
             'static');
 
-        // --- SW expansion: Glendale + Tucson weather locations ---
-        check('CONFIG.locations includes glendale and tucson with coordinates and a state abbreviation',
+        // --- SW expansion: Tucson weather location (Glendale was also
+        // added in this pass but later removed by request — see the
+        // "Glendale was removed" guard further down). ---
+        check('CONFIG.locations includes tucson with coordinates and a state abbreviation',
             run(`(() => {
-                const g = CONFIG.locations.glendale, t = CONFIG.locations.tucson;
-                return !!(g && t && typeof g.latitude === 'number' && typeof g.longitude === 'number' && g.stateAbbr === 'AZ'
-                    && typeof t.latitude === 'number' && typeof t.longitude === 'number' && t.stateAbbr === 'AZ');
+                const t = CONFIG.locations.tucson;
+                return !!(t && typeof t.latitude === 'number' && typeof t.longitude === 'number' && t.stateAbbr === 'AZ');
             })()`),
             true);
         check('every CONFIG.locations entry has a matching weather card and forecast tab in the DOM',
@@ -227,9 +228,12 @@ setTimeout(() => {
             run(`['albuquerque', 'flagstaff', 'lascruces'].every(k =>
                 CONFIG.locations[k] && typeof CONFIG.locations[k].latitude === 'number' && typeof CONFIG.locations[k].longitude === 'number')`),
             true);
-        check('all 7 planned CONFIG.locations entries have a matching weather card and forecast tab',
-            run(`Object.keys(CONFIG.locations).length === 7 && Object.keys(CONFIG.locations).every(key =>
+        check('all 6 remaining CONFIG.locations entries have a matching weather card and forecast tab',
+            run(`Object.keys(CONFIG.locations).length === 6 && Object.keys(CONFIG.locations).every(key =>
                 document.querySelector(\`[data-weather="\${key}"]\`) && document.querySelector(\`[data-location="\${key}"]\`))`),
+            true);
+        check('Glendale was removed from weather tracking (reduce clutter) and does not creep back in',
+            run(`!('glendale' in CONFIG.locations) && !document.querySelector('[data-weather="glendale"]') && !document.querySelector('[data-location="glendale"]')`),
             true);
 
         // --- UNM, NMSU, and NAU were tracked for a while (PUNCHLIST.md #7)
@@ -302,18 +306,20 @@ setTimeout(() => {
         // scales to any number of same-day games (regardless of how many
         // teams are tracked at any given time) rather than needing another
         // pass per team added. Uses synthetic team keys, decoupled from
-        // whichever teams are actually configured. ---
+        // whichever teams are actually configured. Uses today's own date
+        // (not a hardcoded one) so this cell is never in a since-trimmed
+        // past week — see the past-week-trimming tests further below. ---
         run(`
-            const busyDay = '2026-09-19';
+            const busyDay = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
             games = ['fakea', 'fakeb', 'fakec', 'faked'].map((key, i) => ({
                 teamKey: key, sport: 'football', calendarDate: busyDay,
-                dateValue: new Date('2026-09-19T00:00:00Z'), state: 'pre',
+                dateValue: new Date(), state: 'pre',
                 team: key.toUpperCase(), opponent: \`vs Test Opponent \${i}\`,
                 opponentShort: \`Test \${i}\`, time: 'TBD'
             }));
             renderGames('all');
             updateCalendarMonth();
-            window.__busyCell = document.querySelector('.calendar-cell[data-date="2026-09-19"]');
+            window.__busyCell = document.querySelector(\`.calendar-cell[data-date="\${busyDay}"]\`);
         `);
         check('a busy day caps inline calendar events at MAX_INLINE_CALENDAR_EVENTS',
             run(`window.__busyCell.querySelectorAll('.calendar-event').length`), 2);
@@ -470,6 +476,26 @@ setTimeout(() => {
         run(`renderGames('all');`);
         check('the sport-mark in a recent-results row stays in normal inline flow rather than escaping to the page corner',
             run(`getComputedStyle(document.querySelector('#recent-results .result-row .sport-mark')).position`), 'static');
+
+        // --- recent-results cap: only the 3 most recent finished games per
+        // team render, so the card doesn't keep growing as a season's worth
+        // of results piles up. ---
+        run(`
+            games = [1, 2, 3, 4, 5].map(n => ({
+                teamKey: 'asu', sport: 'football', calendarDate: \`2026-09-0\${n}\`,
+                dateValue: new Date(2026, 8, n), state: 'post',
+                team: 'Arizona State', opponent: \`vs Week \${n} Opponent\`, opponentShort: \`Week \${n}\`,
+                time: 'TBD', status: 'Final', scoreText: \`ASU \${10 + n}, Week \${n} Opp \${n}\`
+            }));
+            renderGames('all');
+            window.__cappedRows = [...document.querySelectorAll('#recent-results .results-team[data-team="asu"] .result-opponent')]
+                .map(el2 => el2.textContent);
+        `);
+        check('RECENT_RESULTS_PER_TEAM is 3', run(`RECENT_RESULTS_PER_TEAM`), 3);
+        check('a team with 5 finished games only shows the 3 most recent, not all 5',
+            run(`window.__cappedRows.length`), 3);
+        check('the 3 shown are the most recent ones, newest first (Week 5, 4, 3 — not the older Week 1/2)',
+            run(`window.__cappedRows`), ['Week 5', 'Week 4', 'Week 3']);
 
         // --- light theme ("High Noon") toggle ---
         check('page starts in the default Night Shift (dark) theme',

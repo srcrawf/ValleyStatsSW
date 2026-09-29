@@ -17,6 +17,11 @@ that work in case it's ever added back; item #6 (the weather cities for
 Albuquerque, Flagstaff, and Las Cruces) was explicitly kept, since the ask
 was to declutter the sports side, not drop the weather coverage.
 
+**Update:** Glendale was later dropped from item #6's weather cities by
+request (weather-card, forecast tab, and its `CONFIG.locations` entry all
+removed) — 6 cities remain: Parker, Tempe, Tucson, Albuquerque, Flagstaff,
+and Las Cruces.
+
 ## 1. Light theme ("High Noon") — done
 
 - Added as a selectable alternate to the default dark "Night Shift" palette,
