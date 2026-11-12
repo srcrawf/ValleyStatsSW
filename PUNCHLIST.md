@@ -5,10 +5,13 @@ repo was created. "SW" = Southwest: this repo expands ValleyStatsNS from an
 Arizona-only sports list into an Arizona + New Mexico one, and from a
 Colorado/Arizona weather pair into a seven-city Southwest spread.
 
-**All 7 items below are done.** This file is kept as a record of what was
+**All 8 items below are done.** This file is kept as a record of what was
 built and the open questions each item raised along the way, in case any of
 those decisions need revisiting later (e.g. real logos/branding, tuning the
 standings display once more of the season has been played).
+
+**Update (#8):** NMSU and NAU were added back by request; UNM is still
+untracked.
 
 **Update:** UNM, NMSU, and NAU (item #7's new teams) were later removed from
 sports tracking by request — the calendar/today's-games/standings had gotten
@@ -147,10 +150,54 @@ are tracked the same way ASU and Arizona are, via `sportsFeeds`.
 - This is what pushed the tracked-team count from 4 to 7, which is why the
   mobile crowding fix (#5) was designed for 7 rather than patched for 4.
 
+## 8. NMSU and NAU back, opponent records, and a cleanup pass — done
+
+- **NMSU re-added** (football + men's basketball) by request. ESPN id 166,
+  Conference USA: standings group 12 (football) / 11 (basketball), both
+  re-verified via `teams/166` → `.groups.id`. Color restored to the Aggies
+  gold `#c17817` chosen in #7.
+- **NAU re-added** (football + men's basketball) by request. ESPN id 2464,
+  Big Sky: group 20 (football) / 5 (basketball), re-verified from its live
+  schedule feed. Lumberjacks blue `#2b6cb0` from #7. ASU-vs-NAU and
+  Arizona-vs-NAU rivalry flags (#3) restored. UNM stays untracked.
+- **Opponent overall record under the opponent's logo**, on each team's
+  next game only — the same place the followed team's own record shows. ESPN's schedule feed never carries the opponent's
+  record, so it's read from the opponent's own schedule feed
+  (`site.web.api.espn.com/.../teams/{id}/schedule` → `team.recordSummary`).
+  The plain `teams/{id}` endpoint has the record too, but ESPN blocks it
+  from browser pages (CORS) — it failed silently on the live site, so don't
+  switch back to it. Cached 6 hours (`valleyStats.opponentRecords.v2`).
+- **Fewer lookups:** only each team's next opponent is fetched (~8
+  requests) instead of ~100 for every opponent on every full season.
+- **Records only under the logos, only on the next game** (by request):
+  both the followed team's and the opponent's. The inline record chip under
+  the TV line was removed from calendar boxes (it duplicated the logo
+  caption on the next game and was the only record on later games); in the
+  day panel / today's games it's skipped wherever the logo already shows it.
+- **Short TV labels:** only the first channel ESPN lists is shown; the full
+  list is in a hover tooltip (fixes "TV Suns Live/Arizona's Fam…").
+- **Rivalries vs untracked opponents:** `RIVAL_OPPONENT_IDS` flags NMSU vs
+  New Mexico (167, Rio Grande Rivalry) and vs UTEP (2638, Battle of I-10).
+- **Seasons roll over automatically** (`currentSeasons()`): football flips
+  in March, basketball in August; the "2026–27 season" label follows.
+- **Sample schedule refreshed** with real upcoming games (all 5 teams, from
+  the live feed on Nov 11, 2026), each row carrying its own opponent logo,
+  league and ESPN id. (NAU: basketball only — no upcoming football game
+  could be confirmed from the feed at the time.) Rows dated before today are now dropped, so an old
+  list empties out instead of showing past games as upcoming. Also fixed:
+  sample home games used to swap the two logos.
+- **Not done — records in the phone-width calendar:** measured at 375px a
+  calendar box is ~35px wide and the logo pair alone already needs ~52px, so
+  a record caption can't fit. Tapping the day opens the panel, which shows
+  them.
+- Tests: 125 checks (`test/regression.js`), including the new ones above
+  and a fix for a date-dependent check that broke once Oct 3 became a past
+  week.
+
 ## Verification
 
 All of the above is covered by `test/regression.js` (jsdom, loads the real
-`index.html`) — 57 checks as of this pass, including the new-this-round
+`index.html`) — 57 checks as of that pass (125 as of #8), including the new-this-round
 config/endpoint/parsing checks (standings field extraction, rivalry
 matching, the historical-normal averaging math, the theme toggle actually
 changing computed styles, the calendar-cap "+N more" behavior, and that

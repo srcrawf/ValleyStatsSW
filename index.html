@@ -37,7 +37,7 @@
           --well:#0d131a; --panel-grad-1:rgba(26,34,45,.96); --panel-grad-2:rgba(17,22,29,.96);
           --alert-bg:rgba(255,110,90,.14); --alert-border:rgba(255,110,90,.4); --alert-ink:#ffcac4;
           --live-bg:rgba(79,216,196,.14); --live-border:rgba(79,216,196,.4); --live-ink:#d7f5ef;
-          --team-cardinals:var(--coral); --team-asu:#e85d3f; --team-ua:#d9234b; --team-suns:#f27a31; --team-nmsu:#a6203a; }
+          --team-cardinals:var(--coral); --team-asu:#e85d3f; --team-ua:#d9234b; --team-suns:#f27a31; --team-nmsu:#c17817; --team-nau:#2b6cb0; }
         :root[data-theme="light"] { --ink:#1b2420; --muted:#5b665f; --faint:#5f6a63; --bg:#f5f2ea; --panel:#ffffff; --panel-raised:#eef0eb; --line:#dde1db; --blue:#1c5fb0; --yellow:#8a5e04; --coral:#c1402a; --teal:#0a7d6c;
           --well:#eef0eb; --panel-grad-1:rgba(255,255,255,.98); --panel-grad-2:rgba(238,240,235,.98);
           --alert-bg:rgba(193,64,42,.1); --alert-border:rgba(193,64,42,.35); --alert-ink:#7a2416;
@@ -141,7 +141,7 @@
         .selected-day-count { color:var(--muted); font:10px 'IBM Plex Mono',monospace; }
         .selected-day-list { display:grid; gap:7px; max-height:220px; overflow-y:auto; padding-right:3px; }
         .selected-day-game { display:grid; grid-template-columns:100px 1fr auto; align-items:center; gap:18px; padding:12px 14px; border:1px solid var(--line); border-left:2px solid var(--coral); border-radius:4px; background:var(--panel-raised); }
-        .selected-day-game[data-team="suns"] { border-left-color:#f27a31; } .selected-day-game[data-team="asu"] { border-left-color:#e85d3f; } .selected-day-game[data-team="ua"] { border-left-color:#d9234b; } .selected-day-game[data-team="nmsu"] { border-left-color:var(--team-nmsu); }
+        .selected-day-game[data-team="suns"] { border-left-color:#f27a31; } .selected-day-game[data-team="asu"] { border-left-color:#e85d3f; } .selected-day-game[data-team="ua"] { border-left-color:#d9234b; } .selected-day-game[data-team="nmsu"] { border-left-color:var(--team-nmsu); } .selected-day-game[data-team="nau"] { border-left-color:var(--team-nau); }
         .selected-day-game .team-logo { width:34px; height:34px; }
         .selected-day-game .matchup-logos { gap:8px; margin:0; }
         .selected-day-game strong { color:var(--ink); display:block; font-size:11px; }
@@ -167,7 +167,7 @@
         .calendar-day-number { display:block; color:var(--muted); font:11px 'IBM Plex Mono',monospace; margin-bottom:7px; }
         .is-today .calendar-day-number { color:var(--teal); font-weight:500; }
         .calendar-event { border-left:2px solid var(--coral); background:var(--panel-raised); border-radius:3px; padding:5px 28px 6px 5px; margin-top:4px; overflow:hidden; position:relative; }
-        .calendar-event[data-team="suns"] { border-left-color:var(--team-suns); } .calendar-event[data-team="asu"] { border-left-color:var(--team-asu); } .calendar-event[data-team="ua"] { border-left-color:var(--team-ua); } .calendar-event[data-team="nmsu"] { border-left-color:var(--team-nmsu); }
+        .calendar-event[data-team="suns"] { border-left-color:var(--team-suns); } .calendar-event[data-team="asu"] { border-left-color:var(--team-asu); } .calendar-event[data-team="ua"] { border-left-color:var(--team-ua); } .calendar-event[data-team="nmsu"] { border-left-color:var(--team-nmsu); } .calendar-event[data-team="nau"] { border-left-color:var(--team-nau); }
         .team-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; }
         .team-legend span { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font:9px 'IBM Plex Mono',monospace; }
         .team-legend i { width:8px; height:8px; border-radius:50%; display:block; background:var(--team-cardinals); }
@@ -175,6 +175,7 @@
         .team-legend span[data-team="ua"] i { background:var(--team-ua); }
         .team-legend span[data-team="suns"] i { background:var(--team-suns); }
         .team-legend span[data-team="nmsu"] i { background:var(--team-nmsu); }
+        .team-legend span[data-team="nau"] i { background:var(--team-nau); }
         .standings-strip { display:flex; flex-wrap:wrap; gap:8px; }
         .standings-entry { display:flex; align-items:center; gap:8px; padding:7px 10px; border:1px solid var(--line); border-radius:7px; background:var(--panel-raised); }
         .standings-logo { width:22px; height:22px; object-fit:contain; flex-shrink:0; }
@@ -219,7 +220,7 @@
         .calendar-event .game-status { color:var(--teal); font-weight:500; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.3; }
         .schedule { overflow-x:auto; width:100%; }
         .event { display:grid; grid-template-columns:48px 1fr auto; align-items:center; gap:13px; padding:13px 11px; border:1px solid var(--line); border-left:3px solid var(--coral); background:var(--well); border-radius:7px; }
-        .event[data-team="suns"] { border-left-color:#f27a31; } .event[data-team="asu"] { border-left-color:#e85d3f; } .event[data-team="ua"] { border-left-color:#d9234b; } .event[data-team="nmsu"] { border-left-color:var(--team-nmsu); }
+        .event[data-team="suns"] { border-left-color:#f27a31; } .event[data-team="asu"] { border-left-color:#e85d3f; } .event[data-team="ua"] { border-left-color:#d9234b; } .event[data-team="nmsu"] { border-left-color:var(--team-nmsu); } .event[data-team="nau"] { border-left-color:var(--team-nau); }
         .event-date { text-align:center; font:500 10px 'IBM Plex Mono',monospace; color:var(--muted); text-transform:uppercase; }
         .event-date strong { display:block; color:var(--ink); font:700 19px Sora,sans-serif; line-height:1.1; }
         .event-team { color:var(--ink); font-size:12px; font-weight:700; }
@@ -308,7 +309,7 @@
                 <article class="panel weather-card" data-weather="flagstaff"><div class="location-row"><div><div class="location">Flagstaff <span class="weather-status" data-weather-status>Live</span><span class="last-updated" data-weather-updated></span></div><div class="state">ARIZONA / 86001</div></div><div class="sun-mark"><span class="material-symbols-rounded weather-icon">clear_day</span></div></div><div class="condition">Clear skies · feels like 65°</div><div class="temperature">67<sup>°F</sup></div><div class="weather-meta"><span>HIGH <strong>74°</strong></span><span>LOW <strong>44°</strong></span><span>WIND <strong>10 mph</strong><span class="material-symbols-rounded wind-arrow" data-wind-arrow aria-hidden="true">north</span></span></div><div class="hourly-strip" data-hourly aria-label="Next 12 hours"></div><div class="sun-times" data-suntimes><span>Sunrise --</span><span>Sunset --</span></div></article>
                 <article class="panel weather-card" data-weather="lascruces"><div class="location-row"><div><div class="location">Las Cruces <span class="weather-status" data-weather-status>Live</span><span class="last-updated" data-weather-updated></span></div><div class="state">NEW MEXICO / 88001</div></div><div class="sun-mark" style="color:var(--coral)"><span class="material-symbols-rounded weather-icon">clear_day</span></div></div><div class="condition">Sunny · feels like 82°</div><div class="temperature">84<sup>°F</sup></div><div class="weather-meta"><span>HIGH <strong>90°</strong></span><span>LOW <strong>62°</strong></span><span>WIND <strong>8 mph</strong><span class="material-symbols-rounded wind-arrow" data-wind-arrow aria-hidden="true">north</span></span></div><div class="hourly-strip" data-hourly aria-label="Next 12 hours"></div><div class="sun-times" data-suntimes><span>Sunrise --</span><span>Sunset --</span></div></article>
             </div><aside class="panel today-games" aria-labelledby="today-games-title"><h2 class="today-games-title" id="today-games-title">Today’s games</h2><div class="today-games-date" id="today-games-date">MST · loading</div><div id="today-games-list"><p class="today-empty">Checking the schedule...</p></div></aside></div><div class="panel forecast-panel"><div class="card-top"><p class="section-label" style="margin:0">10-day outlook</p><div class="forecast-tabs" role="tablist"><button class="active" data-location="parker" role="tab">Parker</button><button data-location="tempe" role="tab">Tempe</button><button data-location="tucson" role="tab">Tucson</button><button data-location="albuquerque" role="tab">Albuquerque</button><button data-location="flagstaff" role="tab">Flagstaff</button><button data-location="lascruces" role="tab">Las Cruces</button></div></div><div id="forecast-list" class="forecast-list" aria-live="polite"></div></div></section>
-            <section aria-labelledby="sports-heading"><p class="section-label" id="sports-heading">Schedules / upcoming</p><div class="panel agenda"><div class="agenda-head"><div><h2 class="agenda-title">On the calendar</h2><div class="agenda-subtitle">Football & basketball · 2026–27 season</div></div><div class="agenda-tools"><span id="source-status" class="source-status">Loading games...</span><span id="sports-updated" class="last-updated"></span><button id="refresh-sports" class="refresh-button" type="button">Refresh</button></div></div><div class="filter" role="group" aria-label="Filter games"><button class="active" data-filter="all">All games</button><button data-filter="football">Football</button><button data-filter="basketball">Basketball</button></div><div class="team-legend" aria-hidden="true"><span data-team="cardinals"><i></i>Cardinals</span><span data-team="asu"><i></i>Sun Devils</span><span data-team="ua"><i></i>Wildcats</span><span data-team="suns"><i></i>Suns</span><span data-team="nmsu"><i></i>Aggies</span></div><p class="section-label" style="margin:14px 0 8px">Conference standings</p><div id="standings-strip" class="standings-strip" aria-live="polite"></div><p class="section-label" style="margin:14px 0 8px">Recent results</p><div id="recent-results" class="results-strip" aria-live="polite"></div><div class="calendar-heading"><h3 id="calendar-month-title" class="month-title" style="margin:0">Loading month...</h3><div class="calendar-nav" aria-label="Change visible month"><button id="today-month" type="button" hidden>Today</button><button id="previous-month" type="button" aria-label="Previous month">&#8592;</button><button id="next-month" type="button" aria-label="Next month">&#8594;</button></div></div><div id="selected-day-games" class="selected-day-games" hidden aria-live="polite" aria-atomic="true"></div><div id="schedule" class="schedule"></div></div></section>
+            <section aria-labelledby="sports-heading"><p class="section-label" id="sports-heading">Schedules / upcoming</p><div class="panel agenda"><div class="agenda-head"><div><h2 class="agenda-title">On the calendar</h2><div class="agenda-subtitle">Football & basketball · 2026–27 season</div></div><div class="agenda-tools"><span id="source-status" class="source-status">Loading games...</span><span id="sports-updated" class="last-updated"></span><button id="refresh-sports" class="refresh-button" type="button">Refresh</button></div></div><div class="filter" role="group" aria-label="Filter games"><button class="active" data-filter="all">All games</button><button data-filter="football">Football</button><button data-filter="basketball">Basketball</button></div><div class="team-legend" aria-hidden="true"><span data-team="cardinals"><i></i>Cardinals</span><span data-team="asu"><i></i>Sun Devils</span><span data-team="ua"><i></i>Wildcats</span><span data-team="suns"><i></i>Suns</span><span data-team="nmsu"><i></i>Aggies</span><span data-team="nau"><i></i>Lumberjacks</span></div><p class="section-label" style="margin:14px 0 8px">Conference standings</p><div id="standings-strip" class="standings-strip" aria-live="polite"></div><p class="section-label" style="margin:14px 0 8px">Recent results</p><div id="recent-results" class="results-strip" aria-live="polite"></div><div class="calendar-heading"><h3 id="calendar-month-title" class="month-title" style="margin:0">Loading month...</h3><div class="calendar-nav" aria-label="Change visible month"><button id="today-month" type="button" hidden>Today</button><button id="previous-month" type="button" aria-label="Previous month">&#8592;</button><button id="next-month" type="button" aria-label="Next month">&#8594;</button></div></div><div id="selected-day-games" class="selected-day-games" hidden aria-live="polite" aria-atomic="true"></div><div id="schedule" class="schedule"></div></div></section>
         </main>
         <footer>Weather is live · schedules show live ESPN data where available, with fallback rows for unpublished feeds · all game times shown in Mountain Time</footer>
     </div>
@@ -321,9 +322,12 @@
             pollIntervalMs: 15 * 60 * 1000,
             sportsCacheTtlMs: 30 * 60 * 1000,
             sportsCacheKey: 'valleyStats.sports.v1',
-            footballSeason: 2026,
-            basketballSeason: 2027,
-            seasonLabel: '2026–27 season',
+            // Seasons are worked out from today's date (see currentSeasons
+            // below) so they roll over on their own each year. To pin a
+            // season by hand, replace the getter with a number.
+            get footballSeason() { return currentSeasons().football; },
+            get basketballSeason() { return currentSeasons().basketball; },
+            get seasonLabel() { return currentSeasons().label; },
             locations: {
                 parker: { latitude: 39.5186, longitude: -104.7614, label: 'Parker', region: 'COLORADO / 80138', stateAbbr: 'CO' },
                 tempe: { latitude: 33.4255, longitude: -111.94, label: 'Tempe', region: 'ARIZONA / 85281', stateAbbr: 'AZ' },
@@ -337,19 +341,36 @@
                 asu: 'https://a.espncdn.com/i/teamlogos/ncaa/500/9.png',
                 ua: 'https://a.espncdn.com/i/teamlogos/ncaa/500/12.png',
                 suns: 'https://a.espncdn.com/i/teamlogos/nba/500/phx.png',
-                nmsu: 'https://a.espncdn.com/i/teamlogos/ncaa/500/166.png'
+                nmsu: 'https://a.espncdn.com/i/teamlogos/ncaa/500/166.png',
+                nau: 'https://a.espncdn.com/i/teamlogos/ncaa/500/2464.png'
             },
             // Conference "group" IDs, per ESPN's standings endpoint — verified against
             // live data (teams/{id} -> .groups.id) rather than guessed. Arizona State
             // and Arizona share the same group in both sports (both moved to the Big 12
             // in the 2024 realignment). New Mexico State (ESPN id 166) is
             // Conference USA: group 12 in football, 11 in basketball —
-            // verified against teams/166 -> .groups.id. Used by loadStandings() below.
+            // verified against teams/166 -> .groups.id. Northern Arizona (ESPN id
+            // 2464) is Big Sky: group 20 in football, 5 in basketball — verified
+            // against its live schedule feed's team.groups.id. Used by loadStandings() below.
             standingsGroups: {
-                football: { asu: '4', ua: '4', nmsu: '12' },
-                basketball: { asu: '8', ua: '8', nmsu: '11' }
+                football: { asu: '4', ua: '4', nmsu: '12', nau: '20' },
+                basketball: { asu: '8', ua: '8', nmsu: '11', nau: '5' }
             }
         };
+
+        // ESPN names a football season by the year it starts (2026 = fall
+        // 2026, bowls/playoffs into Jan 2027) and a basketball season by the
+        // year it ends (2027 = the 2026–27 season). Football flips to the
+        // new year in March (the old season is fully over, the new schedule
+        // is what's worth showing); basketball flips in August, when next
+        // season's schedules start appearing.
+        function currentSeasons(now = new Date()) {
+            const year = now.getFullYear();
+            const month = now.getMonth(); // 0 = Jan
+            const football = month >= 2 ? year : year - 1;
+            const basketball = month >= 7 ? year + 1 : year;
+            return { football, basketball, label: `${basketball - 1}–${String(basketball).slice(-2)} season` };
+        }
 
         const GAME_TIME_ZONE = CONFIG.gameTimeZone;
         const locations = Object.fromEntries(
@@ -360,12 +381,12 @@
         // verified against live ESPN data (see PUNCHLIST.md #7), shared by
         // rivalry detection (matching an opponent by id) and standings
         // (matching this team's own entry within its conference's response).
-        const COLLEGE_TEAM_ID_BY_KEY = { asu: '9', ua: '12', nmsu: '166' };
-        const STANDINGS_TEAM_LABEL = { asu: 'Sun Devils', ua: 'Wildcats', nmsu: 'Aggies' };
+        const COLLEGE_TEAM_ID_BY_KEY = { asu: '9', ua: '12', nmsu: '166', nau: '2464' };
+        const STANDINGS_TEAM_LABEL = { asu: 'Sun Devils', ua: 'Wildcats', nmsu: 'Aggies', nau: 'Lumberjacks' };
         // Short mascot-style label for every tracked team (not just the
         // college ones STANDINGS_TEAM_LABEL covers) — used by the recent-
         // results recap, grouped per team like the team legend above it.
-        const TEAM_LABEL = { cardinals: 'Cardinals', asu: 'Sun Devils', ua: 'Wildcats', suns: 'Suns', nmsu: 'Aggies' };
+        const TEAM_LABEL = { cardinals: 'Cardinals', asu: 'Sun Devils', ua: 'Wildcats', suns: 'Suns', nmsu: 'Aggies', nau: 'Lumberjacks' };
 
         // `league` is ESPN's sport/league path segment — also used to look up
         // each opponent's own team page for its overall record (see
@@ -379,6 +400,8 @@
               url: `https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/12/schedule?season=${CONFIG.footballSeason}&seasontype=2` },
             { sport: 'football', league: 'football/college-football', team: 'New Mexico State', teamId: '166', teamKey: 'nmsu',
               url: `https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/166/schedule?season=${CONFIG.footballSeason}&seasontype=2` },
+            { sport: 'football', league: 'football/college-football', team: 'Northern Arizona', teamId: '2464', teamKey: 'nau',
+              url: `https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/2464/schedule?season=${CONFIG.footballSeason}&seasontype=2` },
             { sport: 'basketball', league: 'basketball/nba', team: 'Phoenix Suns', teamId: '21', teamKey: 'suns',
               url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/nba/teams/phx/schedule?season=${CONFIG.basketballSeason}&seasontype=2` },
             { sport: 'basketball', league: 'basketball/mens-college-basketball', team: 'Arizona State', teamId: '9', teamKey: 'asu',
@@ -386,7 +409,9 @@
             { sport: 'basketball', league: 'basketball/mens-college-basketball', team: 'Arizona Wildcats', teamId: '12', teamKey: 'ua',
               url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/12/schedule?season=${CONFIG.basketballSeason}&seasontype=2` },
             { sport: 'basketball', league: 'basketball/mens-college-basketball', team: 'New Mexico State', teamId: '166', teamKey: 'nmsu',
-              url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/166/schedule?season=${CONFIG.basketballSeason}&seasontype=2` }
+              url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/166/schedule?season=${CONFIG.basketballSeason}&seasontype=2` },
+            { sport: 'basketball', league: 'basketball/mens-college-basketball', team: 'Northern Arizona', teamId: '2464', teamKey: 'nau',
+              url: `https://site.web.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/2464/schedule?season=${CONFIG.basketballSeason}&seasontype=2` }
         ];
 
         // ---------------------------------------------------------------------------
@@ -487,45 +512,56 @@
         // ---------------------------------------------------------------------------
         // Fallback games (used when ESPN is down or team missing)
         // ---------------------------------------------------------------------------
+        // Real upcoming games copied from the live ESPN feeds on Nov 11, 2026
+        // (two per team+sport). This is only a stopgap for when ESPN is
+        // unreachable — rows whose date has already passed are dropped
+        // (see fallbackGames below), so an old list quietly empties out
+        // instead of showing finished games as if they were still upcoming.
+        // Refresh it now and then by copying the next few real games in.
+        const FB = 'football/college-football', BB = 'basketball/mens-college-basketball';
+        const NCAA_LOGO = id => `https://a.espncdn.com/i/teamlogos/ncaa/500/${id}.png`;
         const fallbackGamesRaw = [
-            { sport: 'football', team: 'Arizona State', opponent: 'vs Morgan State', date: '2026-09-05', month: 'SEP', day: '5', time: '8:00 PM', teamKey: 'asu', state: 'post', status: 'Final', scoreText: 'ASU 48, MORG 7', broadcast: 'FS1' },
-            { sport: 'football', team: 'Arizona Wildcats', opponent: 'vs Northern Arizona', date: '2026-09-05', month: 'SEP', day: '5', time: '7:30 PM', teamKey: 'ua', state: 'post', status: 'Final', scoreText: 'UA 61, NAU 39', broadcast: 'ESPN+' },
-            { sport: 'football', team: 'Arizona Cardinals', opponent: '@ Buffalo Bills', date: '2026-09-06', month: 'SEP', day: '6', time: '11:00 AM', teamKey: 'cardinals', state: 'post', status: 'Final', scoreText: 'CAR 28, BUF 34', broadcast: 'CBS' },
-            { sport: 'football', team: 'Arizona State', opponent: '@ Texas A&M', date: '2026-09-12', month: 'SEP', day: '12', time: '10:00 AM', teamKey: 'asu', broadcast: 'ABC' },
-            { sport: 'football', team: 'Arizona Wildcats', opponent: '@ BYU', date: '2026-09-12', month: 'SEP', day: '12', time: '1:30 PM', teamKey: 'ua', broadcast: 'FOX' },
-            { sport: 'football', team: 'Arizona Cardinals', opponent: 'vs Seattle Seahawks', date: '2026-09-13', month: 'SEP', day: '13', time: '2:05 PM', teamKey: 'cardinals', broadcast: 'FOX' },
-            { sport: 'football', team: 'Arizona State', opponent: '@ Kansas', date: '2026-09-19', month: 'SEP', day: '19', time: '10:00 AM', teamKey: 'asu', broadcast: 'FS1' },
-            { sport: 'football', team: 'Arizona Wildcats', opponent: 'vs Northern Illinois', date: '2026-09-19', month: 'SEP', day: '19', time: '8:30 PM', teamKey: 'ua', broadcast: 'ESPN2' },
-            { sport: 'football', team: 'Arizona Wildcats', opponent: '@ Washington State', date: '2026-09-26', month: 'SEP', day: '26', time: '5:30 PM', teamKey: 'ua', broadcast: 'FOX' },
-            { sport: 'football', team: 'Arizona State', opponent: 'vs Baylor', date: '2026-10-03', month: 'OCT', day: '3', time: 'TBD', teamKey: 'asu', broadcast: 'TBD' },
-            { sport: 'basketball', team: 'Phoenix Suns', opponent: 'vs Denver Nuggets', date: '2026-10-22', month: 'OCT', day: '22', time: '8:00 PM', teamKey: 'suns', broadcast: 'TNT' },
-            { sport: 'basketball', team: 'Arizona State', opponent: 'vs Gonzaga', date: '2026-11-10', month: 'NOV', day: '10', time: '7:00 PM', teamKey: 'asu', broadcast: 'ESPN2' },
-            { sport: 'basketball', team: 'Arizona Wildcats', opponent: '@ Duke', date: '2026-11-18', month: 'NOV', day: '18', time: '5:30 PM', teamKey: 'ua', broadcast: 'ESPN' }
+            { sport: 'basketball', league: 'basketball/nba', team: 'Phoenix Suns', teamKey: 'suns', opponent: 'vs Charlotte Hornets', opponentTeamId: '30', opponentLogo: 'https://a.espncdn.com/i/teamlogos/nba/500/cha.png', date: '2026-11-12', month: 'NOV', day: '12', time: '7:00 PM', broadcast: 'Suns Live/Arizona\'s Family 3TV' },
+            { sport: 'basketball', league: BB, team: 'New Mexico State', teamKey: 'nmsu', opponent: '@ UTEP Miners', opponentTeamId: '2638', opponentLogo: NCAA_LOGO(2638), date: '2026-11-12', month: 'NOV', day: '12', time: '7:00 PM', broadcast: 'MW+' },
+            { sport: 'basketball', league: BB, team: 'Arizona State', teamKey: 'asu', opponent: 'vs UL Monroe Warhawks', opponentTeamId: '2433', opponentLogo: NCAA_LOGO(2433), date: '2026-11-13', month: 'NOV', day: '13', time: '7:00 PM', broadcast: 'ESPN+' },
+            { sport: 'basketball', league: BB, team: 'Arizona Wildcats', teamKey: 'ua', opponent: '@ Auburn Tigers', opponentTeamId: '2', opponentLogo: NCAA_LOGO(2), date: '2026-11-13', month: 'NOV', day: '13', time: '7:00 PM', broadcast: 'ESPN2' },
+            { sport: 'football', league: FB, team: 'New Mexico State', teamKey: 'nmsu', opponent: '@ Missouri State Bears', opponentTeamId: '2623', opponentLogo: NCAA_LOGO(2623), date: '2026-11-14', month: 'NOV', day: '14', time: '1:00 PM', broadcast: 'ESPN+' },
+            { sport: 'basketball', league: BB, team: 'Northern Arizona', teamKey: 'nau', opponent: '@ Kentucky Wildcats', opponentTeamId: '96', opponentLogo: NCAA_LOGO(96), date: '2026-11-13', month: 'NOV', day: '13', time: '5:00 PM', broadcast: 'SECN+' },
+            { sport: 'football', league: FB, team: 'Arizona State', teamKey: 'asu', opponent: '@ UCF Knights', opponentTeamId: '2116', opponentLogo: NCAA_LOGO(2116), date: '2026-11-14', month: 'NOV', day: '14', time: '1:30 PM', broadcast: 'ESPN2' },
+            { sport: 'football', league: FB, team: 'Arizona Wildcats', teamKey: 'ua', opponent: 'vs Utah Utes', opponentTeamId: '254', opponentLogo: NCAA_LOGO(254), date: '2026-11-14', month: 'NOV', day: '14', time: '5:30 PM', broadcast: 'Fox' },
+            { sport: 'basketball', league: 'basketball/nba', team: 'Phoenix Suns', teamKey: 'suns', opponent: 'vs Los Angeles Lakers', opponentTeamId: '13', opponentLogo: 'https://a.espncdn.com/i/teamlogos/nba/500/lal.png', date: '2026-11-15', month: 'NOV', day: '15', time: '2:00 PM', broadcast: 'Spectrum Sports Net/Suns Live' },
+            { sport: 'basketball', league: BB, team: 'New Mexico State', teamKey: 'nmsu', opponent: '@ San Diego State Aztecs', opponentTeamId: '21', opponentLogo: NCAA_LOGO(21), date: '2026-11-15', month: 'NOV', day: '15', time: '2:00 PM', broadcast: 'CW' },
+            { sport: 'football', league: 'football/nfl', team: 'Arizona Cardinals', teamKey: 'cardinals', opponent: 'vs Los Angeles Rams', opponentTeamId: '14', opponentLogo: 'https://a.espncdn.com/i/teamlogos/nfl/500/lar.png', date: '2026-11-15', month: 'NOV', day: '15', time: '2:05 PM', broadcast: 'CBS' },
+            { sport: 'basketball', league: BB, team: 'Northern Arizona', teamKey: 'nau', opponent: 'vs Embry Riddle (AZ) Eagles', opponentTeamId: '111226', opponentLogo: '', date: '2026-11-17', month: 'NOV', day: '17', time: '6:00 PM', broadcast: 'ESPN+' },
+            { sport: 'basketball', league: BB, team: 'Arizona State', teamKey: 'asu', opponent: 'vs Oakland Golden Grizzlies', opponentTeamId: '2473', opponentLogo: NCAA_LOGO(2473), date: '2026-11-18', month: 'NOV', day: '18', time: '7:00 PM', broadcast: 'ESPN+' },
+            { sport: 'basketball', league: BB, team: 'Arizona Wildcats', teamKey: 'ua', opponent: 'vs UConn Huskies', opponentTeamId: '41', opponentLogo: NCAA_LOGO(41), date: '2026-11-18', month: 'NOV', day: '18', time: '7:00 PM', broadcast: 'FS1' },
+            { sport: 'football', league: FB, team: 'Arizona Wildcats', teamKey: 'ua', opponent: '@ Kansas State Wildcats', opponentTeamId: '2306', opponentLogo: NCAA_LOGO(2306), date: '2026-11-21', month: 'NOV', day: '21', time: 'TBD', broadcast: 'TBD' },
+            { sport: 'football', league: FB, team: 'New Mexico State', teamKey: 'nmsu', opponent: 'vs Delaware Blue Hens', opponentTeamId: '48', opponentLogo: NCAA_LOGO(48), date: '2026-11-21', month: 'NOV', day: '21', time: '1:00 PM', broadcast: 'ESPN+' },
+            { sport: 'football', league: FB, team: 'Arizona State', teamKey: 'asu', opponent: 'vs Oklahoma State Cowboys', opponentTeamId: '197', opponentLogo: NCAA_LOGO(197), date: '2026-11-21', month: 'NOV', day: '21', time: '8:15 PM', broadcast: 'ESPN' },
+            { sport: 'football', league: 'football/nfl', team: 'Arizona Cardinals', teamKey: 'cardinals', opponent: '@ Kansas City Chiefs', opponentTeamId: '12', opponentLogo: 'https://a.espncdn.com/i/teamlogos/nfl/500/kc.png', date: '2026-11-22', month: 'NOV', day: '22', time: '11:00 AM', broadcast: 'CBS' }
         ];
 
-        const fallbackOpponentLogos = {
-            'Arizona Cardinals': 'https://a.espncdn.com/i/teamlogos/nfl/500/sea.png',
-            'Phoenix Suns': 'https://a.espncdn.com/i/teamlogos/nba/500/den.png',
-            'Arizona State': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2250.png',
-            'Arizona Wildcats': 'https://a.espncdn.com/i/teamlogos/ncaa/500/150.png'
-        };
-
+        // Each row carries its own opponent logo now. (The old version kept
+        // one logo per team and swapped own/opponent logos on home games,
+        // which put the wrong logo on each side of the matchup row.)
         function hydrateFallback(game) {
             const g = { ...game };
+            g.state = g.state || 'pre';
             g.calendarDate = g.date;
             g.dateValue = new Date(`${g.date}T12:00:00Z`);
-            g.opponentLogo = fallbackOpponentLogos[g.team] || '';
-            if (g.opponent.startsWith('vs')) {
-                const ownLogo = teamLogos[g.teamKey];
-                g.logo = g.opponentLogo;
-                g.opponentLogo = ownLogo;
-            } else {
-                g.logo = teamLogos[g.teamKey];
-            }
+            g.logo = teamLogos[g.teamKey];
+            g.opponentLogo = g.opponentLogo || '';
             return g;
         }
 
-        const fallbackGames = fallbackGamesRaw.map(hydrateFallback);
+        function isStaleFallback(game) {
+            // Keep anything with a result; drop upcoming rows dated before today.
+            if (game.state === 'post') return false;
+            const todayKey = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+            return game.date < todayKey;
+        }
+
+        const fallbackGames = fallbackGamesRaw.map(hydrateFallback).filter(g => !isStaleFallback(g));
         let games = [...fallbackGames];
 
         // ---------------------------------------------------------------------------
@@ -676,7 +712,7 @@
         // day panel, today's games, and the under-the-logo caption for a
         // team's next game) is reading the same number the same way,
         // instead of some of them trusting a field ESPN doesn't reliably
-        // provide. This only works for a tracked team (asu/ua/nmsu/cardinals/
+        // provide. This only works for a tracked team (asu/ua/nmsu/nau/cardinals/
         // suns), since that's the only side whose full season schedule
         // we've fetched — an opponent's record still has to come from
         // ESPN, when it has it.
@@ -702,9 +738,12 @@
         // copy-pasted correctly into two nearly-identical blocks.
         function appendGameMeta(container, game) {
             if (game.broadcast && game.broadcast !== 'TBD') {
-                container.appendChild(el('span', { className: 'broadcast-tag', text: `TV ${game.broadcast}` }));
+                container.appendChild(broadcastTag(game));
             }
-            const record = computeOwnRecord(game.teamKey, game.sport, game.dateValue);
+            // Skip the inline record when logoPair already shows it under
+            // the team's logo (a team's next game), so it isn't listed twice.
+            const recordUnderLogo = isNextGame(game);
+            const record = recordUnderLogo ? '' : computeOwnRecord(game.teamKey, game.sport, game.dateValue);
             if (record) {
                 container.appendChild(el('span', { className: 'team-record', text: record }));
             }
@@ -746,12 +785,10 @@
             const wrap = el('div', { className: 'matchup-logos' });
             const isAway = game.opponent.startsWith('@');
 
-            // A record only makes sense to show for a team's next upcoming
-            // game — showing it on every calendar box would just repeat the
-            // same "current" number over and over. `game` here is the exact
-            // object stored in `nextGameByTeamSport`, so identity comparison
-            // is enough — no separate id field needed.
-            const isNextGame = nextGameByTeamSport[`${game.teamKey}:${game.sport}`] === game;
+            // Records (ours and the opponent's) show under the logos only on
+            // each team's next game — on every box they'd just repeat the
+            // same "current" numbers over and over.
+            const showRecords = isNextGame(game);
 
             const ownSrc = safeImageUrl(game.logo || teamLogos[game.teamKey]);
             const ownImg = ownSrc ? el('img', {
@@ -759,7 +796,7 @@
                 src: ownSrc,
                 alt: `${game.team} logo`
             }) : null;
-            const ownNode = wrapLogoWithRecord(ownImg, isNextGame ? computeOwnRecord(game.teamKey, game.sport, game.dateValue) : '');
+            const ownNode = wrapLogoWithRecord(ownImg, showRecords ? computeOwnRecord(game.teamKey, game.sport, game.dateValue) : '');
 
             const oppSrc = safeImageUrl(game.opponentLogo);
             const oppImg = oppSrc ? el('img', {
@@ -771,11 +808,7 @@
                 'aria-label': 'Opponent logo unavailable',
                 text: '?'
             });
-            // The opponent's overall record shows under its logo on every
-            // game that hasn't finished yet (it's the opponent's *current*
-            // record, fetched by loadOpponentRecords, so it would be wrong
-            // on an already-played game).
-            const oppNode = wrapLogoWithRecord(oppImg, game.state !== 'post' ? game.opponentRecord : '');
+            const oppNode = wrapLogoWithRecord(oppImg, showRecords ? game.opponentRecord : '');
 
             const divider = el('span', {
                 className: 'logo-divider',
@@ -820,6 +853,11 @@
         // (not an id) to match, since every render reads the same game
         // objects out of `games` rather than cloning them.
         let nextGameByTeamSport = {};
+        // `game` is the exact object stored in nextGameByTeamSport, so
+        // identity comparison is enough.
+        function isNextGame(game) {
+            return nextGameByTeamSport[`${game.teamKey}:${game.sport}`] === game;
+        }
 
         function computeNextGameByTeamSport() {
             const map = {};
@@ -907,9 +945,20 @@
         // here; it doesn't touch the render paths that call isRivalryGame().
         // ---------------------------------------------------------------------------
         const RIVALRY_PAIRS = [
-            ['asu', 'ua']    // Territorial Cup
+            ['asu', 'ua'],   // Territorial Cup
+            ['asu', 'nau'],  // in-state (PUNCHLIST.md #3)
+            ['ua', 'nau']    // in-state (PUNCHLIST.md #3)
         ];
+        // Rivals that aren't tracked teams themselves, matched by the
+        // opponent's ESPN team id (same verified-id approach as above).
+        const RIVAL_OPPONENT_IDS = {
+            nmsu: {
+                '167': 'Rio Grande Rivalry',   // New Mexico Lobos (id per PUNCHLIST.md #7)
+                '2638': 'Battle of I-10'       // UTEP Miners (id seen in the live feed)
+            }
+        };
         function isRivalryGame(game) {
+            if (game.opponentTeamId && RIVAL_OPPONENT_IDS[game.teamKey]?.[game.opponentTeamId]) return true;
             return RIVALRY_PAIRS.some(([a, b]) => {
                 const other = game.teamKey === a ? b : game.teamKey === b ? a : null;
                 return other && game.opponentTeamId && game.opponentTeamId === COLLEGE_TEAM_ID_BY_KEY[other];
@@ -983,12 +1032,11 @@
             node.appendChild(el('span', { className: 'opponent-name', text: game.opponentShort || opponentName(game) }));
             node.appendChild(el('span', { className: 'game-status', text: infoText }));
             if (game.broadcast && game.broadcast !== 'TBD') {
-                node.appendChild(el('span', { className: 'broadcast-tag', text: `TV ${game.broadcast}` }));
+                node.appendChild(broadcastTag(game));
             }
-            const calendarRecord = computeOwnRecord(game.teamKey, game.sport, game.dateValue);
-            if (calendarRecord) {
-                node.appendChild(el('span', { className: 'team-record', text: calendarRecord }));
-            }
+            // No inline record chip here — the record already sits under
+            // the team's logo in logoPair, and showing it again below the
+            // TV line just repeated the same number.
             return node;
         }
 
@@ -1294,6 +1342,24 @@
             });
         }
 
+        // ESPN often lists several channels joined with "/" (e.g. "Spectrum
+        // Sports Net/Spectrum Sports Net +/Arizona's Family 3TV/Suns Live"),
+        // which gets cut off with an ellipsis in a calendar box. Show only
+        // the first one — ESPN lists the main/national channel first — and
+        // keep the full list in a hover tooltip.
+        function shortBroadcast(broadcast) {
+            return String(broadcast || '').split('/')[0].trim();
+        }
+        function broadcastTag(game) {
+            const full = game.broadcast;
+            const short = shortBroadcast(full);
+            return el('span', {
+                className: 'broadcast-tag',
+                text: `TV ${short}`,
+                title: short !== full ? full : null
+            });
+        }
+
         function broadcasterName(event, competition) {
             const sources = [
                 ...(competition?.broadcasts || []),
@@ -1559,13 +1625,23 @@
             });
         }
 
+        // Only each team's next opponent is looked up (that's the only
+        // place an opponent record is shown) — about 8 requests instead of
+        // ~100 for every opponent on every full season.
+        const opponentRecordsInFlight = new Set();
+
         async function loadOpponentRecords() {
+            computeNextGameByTeamSport();
+            const shouldLoad = isNextGame;
             const needed = new Set();
             games.forEach(game => {
                 const key = opponentRecordKey(game);
-                if (key && game.state !== 'post' && !(key in opponentRecords)) needed.add(key);
+                if (key && game.state !== 'post' && !(key in opponentRecords) &&
+                    !opponentRecordsInFlight.has(key) && shouldLoad(game)) needed.add(key);
             });
-            if (needed.size) {
+            if (!needed.size) { applyOpponentRecords(); return; }
+            needed.forEach(key => opponentRecordsInFlight.add(key));
+            {
                 await Promise.all([...needed].map(async key => {
                     const [league, teamId] = key.split('|');
                     try {
@@ -1579,6 +1655,7 @@
                         // isn't re-requested on every refresh.
                         opponentRecords[key] = data?.team?.recordSummary || '';
                     } catch (error) { /* leave it out — the logo just shows no caption */ }
+                    finally { opponentRecordsInFlight.delete(key); }
                 }));
                 writeOpponentRecordCache(opponentRecords);
             }

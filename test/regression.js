@@ -124,8 +124,11 @@ setTimeout(() => {
                 { teamKey:'asu', sport:'football', state:'post', dateValue:new Date('2026-09-05T00:00:00Z'), score:[{score:70},{score:7}] }
             ];
             window.__metaEl = document.createElement('div');
+            // A finished game: its record isn't under the logo (logoPair only
+            // shows records on games that haven't been played), so the
+            // inline record chip is where it appears.
             appendGameMeta(window.__metaEl, {
-                teamKey:'asu', sport:'football', dateValue:new Date('2026-09-12T00:00:00Z'),
+                teamKey:'asu', sport:'football', state:'post', dateValue:new Date('2026-09-12T00:00:00Z'),
                 broadcast:'ABC', venue:'College Station, TX'
             });
         `);
@@ -236,19 +239,32 @@ setTimeout(() => {
             run(`!('glendale' in CONFIG.locations) && !document.querySelector('[data-weather="glendale"]') && !document.querySelector('[data-location="glendale"]')`),
             true);
 
-        // --- UNM, NMSU, and NAU were tracked for a while (PUNCHLIST.md #7)
-        // but were later removed by request to reduce clutter — only the
-        // weather cities for those states/that state stayed. Guard against
-        // them silently creeping back into the tracked-team config. ---
-        check('UNM, NMSU, and NAU are not tracked in sportsFeeds (removed to reduce clutter; only ASU/UA remain as college teams)',
-            run(`!sportsFeeds.some(f => ['unm', 'nmsu', 'nau'].includes(f.teamKey))`),
+        // --- UNM, NMSU, and NAU were tracked for a while (PUNCHLIST.md #7),
+        // all removed to reduce clutter, then NMSU alone was added back by
+        // request (PUNCHLIST.md #8). Guard against UNM/NAU creeping back in
+        // and check NMSU is fully wired. ---
+        check('UNM is still not tracked in sportsFeeds',
+            run(`!sportsFeeds.some(f => f.teamKey === 'unm')`),
             true);
-        check('teamLogos has no leftover entries for the removed teams',
-            run(`!['unm', 'nmsu', 'nau'].some(k => k in teamLogos)`),
+        check('NAU is tracked in both football and basketball, ESPN id 2464',
+            run(`['football','basketball'].every(sp => sportsFeeds.some(f => f.teamKey === 'nau' && f.sport === sp && f.teamId === '2464'))`),
             true);
-        check('CONFIG.standingsGroups only covers the currently-tracked college teams (ASU/UA)',
-            run(`['football', 'basketball'].every(sport =>
-                Object.keys(CONFIG.standingsGroups[sport]).sort().join(',') === 'asu,ua')`),
+        check('NMSU is tracked in both football and basketball, ESPN id 166',
+            run(`['football','basketball'].every(sp => sportsFeeds.some(f => f.teamKey === 'nmsu' && f.sport === sp && f.teamId === '166'))`),
+            true);
+        check('teamLogos has NMSU and NAU but no UNM entry',
+            run(`('nmsu' in teamLogos) && ('nau' in teamLogos) && !('unm' in teamLogos)`),
+            true);
+        check('CONFIG.standingsGroups covers ASU/UA/NMSU/NAU with the verified group ids (NMSU C-USA 12/11, NAU Big Sky 20/5)',
+            run(`CONFIG.standingsGroups.football.nmsu === '12' && CONFIG.standingsGroups.basketball.nmsu === '11' &&
+                CONFIG.standingsGroups.football.nau === '20' && CONFIG.standingsGroups.basketball.nau === '5' &&
+                ['football', 'basketball'].every(sport => Object.keys(CONFIG.standingsGroups[sport]).sort().join(',') === 'asu,nau,nmsu,ua')`),
+            true);
+        check('NAU has a legend entry, a team color and a standings label',
+            run(`!!document.querySelector('.team-legend [data-team="nau"]') && STANDINGS_TEAM_LABEL.nau === 'Lumberjacks'`) && /--team-nau:#2b6cb0/.test(html),
+            true);
+        check('every sports feed carries an ESPN league path (used for opponent-record lookups)',
+            run(`sportsFeeds.every(f => /^(football|basketball)[/][a-z-]+$/.test(f.league))`),
             true);
 
         // --- rivalry highlighting: matched by the opponent's ESPN team id,
@@ -262,9 +278,18 @@ setTimeout(() => {
         `);
         check('isRivalryGame flags ASU vs Arizona (Territorial Cup)', run(`isRivalryGame(window.__territorialCup)`), true);
         check('isRivalryGame does not flag an unrelated matchup', run(`isRivalryGame(window.__notARivalry)`), false);
-        check('RIVALRY_PAIRS no longer references the removed teams',
-            run(`!RIVALRY_PAIRS.flat().some(k => ['unm', 'nmsu', 'nau'].includes(k))`),
+        check('RIVALRY_PAIRS does not reference the untracked UNM key',
+            run(`!RIVALRY_PAIRS.flat().includes('unm')`),
             true);
+        check('ASU vs NAU and Arizona vs NAU are flagged as in-state rivalries',
+            run(`[isRivalryGame({ teamKey: 'asu', opponentTeamId: '2464' }), isRivalryGame({ teamKey: 'nau', opponentTeamId: '12' })]`),
+            [true, true]);
+        check('NMSU vs New Mexico (id 167) is flagged — Rio Grande Rivalry',
+            run(`isRivalryGame({ teamKey: 'nmsu', opponentTeamId: '167' })`), true);
+        check('NMSU vs UTEP (id 2638) is flagged — Battle of I-10',
+            run(`isRivalryGame({ teamKey: 'nmsu', opponentTeamId: '2638' })`), true);
+        check('a non-NMSU team playing UTEP is not flagged',
+            run(`isRivalryGame({ teamKey: 'asu', opponentTeamId: '2638' })`), false);
 
         // --- dedupeMutualGames: when two tracked teams play each other,
         // each side's own ESPN feed independently returns that same game —
@@ -631,10 +656,13 @@ setTimeout(() => {
         // one), and no context split the opponent's name out from the rest
         // of the muted meta text so it could be styled more prominently.
         run(`
-            const testDay = '2026-10-03';
+            // A date a week from now, so this check doesn't break once a
+            // hardcoded date drifts into a past week the calendar trims away.
+            const testDayDate = new Date(Date.now() + 7 * 86400000);
+            const testDay = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(testDayDate);
             games = [{
                 teamKey: 'asu', sport: 'football', calendarDate: testDay,
-                dateValue: new Date('2026-10-03T00:00:00Z'), state: 'pre',
+                dateValue: new Date(testDay + 'T19:00:00Z'), state: 'pre',
                 team: 'Arizona State', opponent: 'vs Test Rival',
                 opponentShort: 'Test Rival', time: 'TBD'
             }];
@@ -696,6 +724,111 @@ setTimeout(() => {
             run(`getComputedStyle(window.__selectedGame.querySelector('strong')).color`),
             true);
 
+
+        // --- Round 8 (PUNCHLIST.md #8) ---
+        // Records under the logos only on each team's NEXT game — later games show none.
+        run(`
+            const dA = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 1 * 86400000));
+            const dB = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 3 * 86400000));
+            games = [
+                { teamKey:'ua', sport:'football', state:'post', dateValue:new Date(Date.now() - 5 * 86400000), calendarDate:'2000-01-01', score:[{score:30},{score:10}], team:'Arizona Wildcats', opponent:'vs X' },
+                { teamKey:'ua', sport:'football', state:'pre', calendarDate:dA, dateValue:new Date(Date.now() + 1 * 86400000), team:'Arizona Wildcats', opponent:'vs Next Opp', time:'7:00 PM', logo:'https://example.test/ua.png' },
+                { teamKey:'ua', sport:'football', state:'pre', calendarDate:dB, dateValue:new Date(Date.now() + 3 * 86400000), team:'Arizona Wildcats', opponent:'@ Later Opp', time:'7:00 PM', logo:'https://example.test/ua.png' }
+            ];
+            renderGames('all');
+            updateCalendarMonth();
+            window.__laterBox = document.querySelector(\`.calendar-cell[data-date="\${dB}"] .calendar-event\`);
+        `);
+        check('a later (not-next) game shows no records under either logo',
+            run(`window.__laterBox ? window.__laterBox.querySelectorAll('.logo-record').length : -1`),
+            0);
+        check('a later game also has no inline record chip in the calendar box',
+            run(`window.__laterBox ? window.__laterBox.querySelectorAll('.team-record').length : -1`),
+            0);
+
+        // Opponent record under the opponent's logo; own record not repeated below the TV line.
+        run(`
+            const d8 = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 2 * 86400000));
+            games = [
+                { teamKey:'asu', sport:'basketball', state:'post', dateValue:new Date(Date.now() - 3 * 86400000), calendarDate:'2000-01-01', score:[{score:80},{score:60}], team:'Arizona State', opponent:'vs Old Opp' },
+                { teamKey:'asu', sport:'basketball', state:'pre', calendarDate:d8, dateValue:new Date(Date.now() + 2 * 86400000),
+                  team:'Arizona State', opponent:'@ Record Opp', opponentShort:'Record Opp', opponentRecord:'7-3', time:'7:00 PM',
+                  broadcast:'Spectrum Sports Net/Suns Live', logo:'https://example.test/a.png', opponentLogo:'https://example.test/b.png' }
+            ];
+            renderGames('all');
+            updateCalendarMonth();
+            window.__r8 = document.querySelector(\`.calendar-cell[data-date="\${d8}"] .calendar-event\`);
+        `);
+        check('opponent record shows under the opponent logo on an upcoming game',
+            run(`[...window.__r8.querySelectorAll('.logo-with-record')].map(c => c.querySelector('img').alt + '=' + c.querySelector('.logo-record').textContent).sort().join(' ')`),
+            'Arizona State logo=1-0 Record Opp logo=7-3');
+        check('the followed team record is not repeated as an inline chip below the TV line in the calendar box',
+            run(`window.__r8.querySelectorAll('.team-record').length`), 0);
+        check('appendGameMeta skips the inline record for a next game, whose logo already shows it',
+            run(`(() => { const m = document.createElement('div'); appendGameMeta(m, games[1]); return !!m.querySelector('.team-record'); })()`),
+            false);
+        check('TV label shows only the first channel, with the full list in a tooltip',
+            run(`[window.__r8.querySelector('.broadcast-tag').textContent, window.__r8.querySelector('.broadcast-tag').title]`),
+            ['TV Spectrum Sports Net', 'Spectrum Sports Net/Suns Live']);
+        check('a single-channel TV label has no redundant tooltip',
+            run(`broadcastTag({ broadcast: 'ESPN2' }).hasAttribute('title')`), false);
+
+        // Opponent records come from the opponent's schedule feed (CORS-safe), not teams/{id}.
+        check('opponent records use the schedule endpoint on site.web.api.espn.com, not the CORS-blocked teams/{id}',
+            run(`(() => { const src = loadOpponentRecords.toString(); return src.includes('site.web.api.espn.com') && src.includes('/schedule?') && src.includes('recordSummary') && !src.includes('site.api.espn.com/apis/site/v2'); })()`),
+            true);
+        check('loadOpponentRecords requests only near-term opponents, once each',
+            run(`(async () => {
+                const calls = [];
+                const realFetch = window.fetch;
+                window.fetch = (url) => { calls.push(url); return Promise.resolve({ ok: true, json: () => Promise.resolve({ team: { recordSummary: '4-2' } }) }); };
+                for (const k of Object.keys(opponentRecords)) delete opponentRecords[k];
+                games = [
+                    { teamKey:'asu', sport:'basketball', state:'pre', league:'basketball/mens-college-basketball', opponentTeamId:'111', dateValue:new Date(Date.now() + 86400000), calendarDate:'2099-01-01', opponent:'vs A' },
+                    { teamKey:'ua', sport:'basketball', state:'pre', league:'basketball/mens-college-basketball', opponentTeamId:'111', dateValue:new Date(Date.now() + 2 * 86400000), calendarDate:'2099-01-02', opponent:'vs A' },
+                    { teamKey:'asu', sport:'basketball', state:'pre', league:'basketball/mens-college-basketball', opponentTeamId:'222', dateValue:new Date(Date.now() + 90 * 86400000), calendarDate:'2099-03-01', opponent:'vs B' }
+                ];
+                await loadOpponentRecords();
+                window.fetch = realFetch;
+                window.__lazyCalls = calls.length;
+                window.__lazyRecord = games[0].opponentRecord;
+            })()`) && null, null);
+
+        // Seasons roll over on their own.
+        check('currentSeasons: Nov 2026 is football 2026 / basketball 2027 ("2026–27 season")',
+            run(`(() => { const s = currentSeasons(new Date(2026, 10, 11)); return [s.football, s.basketball, s.label]; })()`),
+            [2026, 2027, '2026–27 season']);
+        check('currentSeasons: Jan 2027 is still football 2026 (bowls/playoffs) and basketball 2027',
+            run(`(() => { const s = currentSeasons(new Date(2027, 0, 15)); return [s.football, s.basketball]; })()`),
+            [2026, 2027]);
+        check('currentSeasons: Aug 2027 rolls to football 2027 / basketball 2028',
+            run(`(() => { const s = currentSeasons(new Date(2027, 7, 1)); return [s.football, s.basketball]; })()`),
+            [2027, 2028]);
+        check('CONFIG seasons are derived, not hardcoded',
+            run(`CONFIG.footballSeason === currentSeasons().football && CONFIG.basketballSeason === currentSeasons().basketball`),
+            true);
+
+        // Fallback schedule.
+        check('sample-schedule rows dated before today are dropped instead of showing as upcoming',
+            run(`[isStaleFallback({ date: '2000-01-01' }), isStaleFallback({ date: '2999-01-01' }), isStaleFallback({ date: '2000-01-01', state: 'post' })]`),
+            [true, false, false]);
+        check('sample schedule includes NMSU in both sports',
+            run(`['football','basketball'].every(sp => fallbackGamesRaw.some(g => g.teamKey === 'nmsu' && g.sport === sp))`),
+            true);
+        check('a hydrated home sample game keeps its own logo on its own side (no own/opponent logo swap)',
+            run(`(() => { const g = hydrateFallback({ teamKey:'ua', sport:'football', team:'Arizona Wildcats', opponent:'vs Utah Utes', opponentLogo:'https://example.test/utah.png', date:'2999-01-01' }); return [g.logo === teamLogos.ua, g.opponentLogo]; })()`),
+            [true, 'https://example.test/utah.png']);
+        check('NMSU uses the gold team color chosen in PUNCHLIST.md #7',
+            /--team-nmsu:#c17817/.test(html), true);
+
+        setTimeout(() => {
+            check('loadOpponentRecords looks up only next-game opponents (one shared opponent = one request; a later game\'s opponent is skipped)',
+                window.__lazyCalls, 1);
+            check('the fetched record is applied to the game', window.__lazyRecord, '4-2');
+            console.log(`\n${passed} passed, ${failed} failed.`);
+            process.exit(failed ? 1 : 0);
+        }, 300);
+        return;
         console.log(`\n${passed} passed, ${failed} failed.`);
         process.exit(failed ? 1 : 0);
     } catch (e) {
