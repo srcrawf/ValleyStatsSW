@@ -55,6 +55,23 @@
         .theme-toggle:hover { color:var(--teal); background:var(--panel-raised); }
         .theme-toggle:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
         .theme-toggle .material-symbols-rounded { font-size:18px; }
+        .theme-toggle[aria-expanded="true"] { color:var(--teal); border-color:var(--teal); }
+        /* Settings: choose which teams and weather cities show */
+        .settings-panel { margin:0 0 22px; padding:16px 18px; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px 28px; }
+        .settings-panel[hidden] { display:none; }
+        .settings-panel fieldset { border:0; margin:0; padding:0; min-width:0; }
+        .settings-panel legend { padding:0; margin-bottom:10px; color:var(--muted); font:600 10px 'IBM Plex Mono',monospace; letter-spacing:.1em; text-transform:uppercase; }
+        .settings-options { display:flex; flex-wrap:wrap; gap:6px; }
+        .settings-option { display:inline-flex; align-items:center; gap:7px; padding:6px 11px 6px 9px; border:1px solid var(--line); border-radius:20px; color:var(--muted); font:600 11px Sora,sans-serif; cursor:pointer; user-select:none; }
+        .settings-option:has(input:checked) { color:var(--ink); background:var(--panel-raised); border-color:var(--teal); }
+        .settings-option:has(input:disabled) { cursor:not-allowed; }
+        .settings-option:has(input:focus-visible) { outline:2px solid var(--teal); outline-offset:2px; }
+        .settings-option input { margin:0; accent-color:var(--teal); }
+        .settings-option i { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+        .settings-foot { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; color:var(--faint); font-size:11px; }
+        .settings-foot button { border:1px solid var(--line); background:transparent; color:var(--muted); font:600 11px Sora,sans-serif; padding:6px 11px; border-radius:5px; cursor:pointer; }
+        .settings-foot button:hover { color:var(--ink); background:var(--panel-raised); }
+        .weather-card[hidden],.forecast-tabs button[hidden],.team-legend span[hidden] { display:none !important; }
         .brand-mark { flex-shrink:0; width:clamp(30px,4.6vw,50px); height:clamp(30px,4.6vw,50px); color:var(--teal); }
         .mountain-mark { flex-shrink:0; width:clamp(26px,4vw,42px); height:clamp(26px,4vw,42px); color:var(--blue); margin-left:2px; }
         .date-stamp { color:var(--muted); font:12px 'IBM Plex Mono',monospace; text-align:right; line-height:1.7; }
@@ -303,7 +320,12 @@
     <div class="shell">
         <div id="alert-banner" class="top-banner alert-banner" hidden role="alert"></div>
         <div id="live-banner" class="top-banner live-banner" hidden aria-live="assertive" aria-atomic="true"></div>
-        <header><div class="brand-row"><svg class="brand-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11 3.5C11 2.67 10.33 2 9.5 2S8 2.67 8 3.5V10H6.5C5.67 10 5 10.67 5 11.5S5.67 13 6.5 13H8v8.5c0 .28.22.5.5.5h3c.28 0 .5-.22.5-.5V3.5Z" fill="currentColor"/><path d="M13 8.5c0-.83.67-1.5 1.5-1.5S16 7.67 16 8.5V13h1.5c.83 0 1.5.67 1.5 1.5S18.33 16 17.5 16H16v5.5c0 .28-.22.5-.5.5h-2c-.28 0-.5-.22-.5-.5V8.5Z" fill="currentColor"/></svg><h1>ValleyStats <span style="color:var(--coral)">& Scoreboard</span></h1><svg class="mountain-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 19L9 7L12 11L15 4L21 19Z" fill="currentColor"/></svg><button id="theme-toggle" type="button" class="theme-toggle" aria-label="Switch to High Noon (light) theme" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true">dark_mode</span></button></div><div class="date-stamp"><div><span id="live-indicator" class="live-dot"></span><span id="clock">--:--</span> <span id="tz-name"></span></div><div id="today-label">Loading date...</div><div id="next-game-countdown" class="next-game-countdown" aria-live="polite">Next game: checking schedule...</div></div></header>
+        <header><div class="brand-row"><svg class="brand-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11 3.5C11 2.67 10.33 2 9.5 2S8 2.67 8 3.5V10H6.5C5.67 10 5 10.67 5 11.5S5.67 13 6.5 13H8v8.5c0 .28.22.5.5.5h3c.28 0 .5-.22.5-.5V3.5Z" fill="currentColor"/><path d="M13 8.5c0-.83.67-1.5 1.5-1.5S16 7.67 16 8.5V13h1.5c.83 0 1.5.67 1.5 1.5S18.33 16 17.5 16H16v5.5c0 .28-.22.5-.5.5h-2c-.28 0-.5-.22-.5-.5V8.5Z" fill="currentColor"/></svg><h1>ValleyStats <span style="color:var(--coral)">& Scoreboard</span></h1><svg class="mountain-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 19L9 7L12 11L15 4L21 19Z" fill="currentColor"/></svg><button id="theme-toggle" type="button" class="theme-toggle" aria-label="Switch to High Noon (light) theme" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true">dark_mode</span></button><button id="settings-toggle" type="button" class="theme-toggle" aria-label="Choose teams and weather cities" aria-expanded="false" aria-controls="settings-panel" title="Choose teams and weather cities"><span class="material-symbols-rounded" aria-hidden="true">tune</span></button></div><div class="date-stamp"><div><span id="live-indicator" class="live-dot"></span><span id="clock">--:--</span> <span id="tz-name"></span></div><div id="today-label">Loading date...</div><div id="next-game-countdown" class="next-game-countdown" aria-live="polite">Next game: checking schedule...</div></div></header>
+        <div id="settings-panel" class="panel settings-panel" hidden aria-label="Display settings">
+            <fieldset><legend>Teams</legend><div class="settings-options" id="settings-teams"></div></fieldset>
+            <fieldset><legend>Weather cities</legend><div class="settings-options" id="settings-cities"></div></fieldset>
+            <div class="settings-foot"><span>Saved in this browser. At least one team and one city stay on.</span><button type="button" id="settings-reset">Show everything</button></div>
+        </div>
         <main>
             <section aria-labelledby="weather-heading"><p class="section-label" id="weather-heading">Weather / now</p><div class="weather-and-today"><div class="weather-grid">
                 <article class="panel weather-card" data-weather="parker"><div class="location-row"><div><div class="location">Parker <span class="weather-status" data-weather-status>Live</span><span class="last-updated" data-weather-updated></span></div><div class="state">COLORADO / 80138</div></div><div class="sun-mark"><span class="material-symbols-rounded weather-icon">clear_day</span></div></div><div class="condition">Clear skies · feels like 49°</div><div class="temperature">52<sup>°F</sup></div><div class="weather-meta"><span>HIGH <strong>58°</strong></span><span>LOW <strong>38°</strong></span><span>WIND <strong>6 mph</strong><span class="material-symbols-rounded wind-arrow" data-wind-arrow aria-hidden="true">north</span></span></div><div class="hourly-strip" data-hourly aria-label="Next 12 hours"></div><div class="sun-times" data-suntimes><span>Sunrise --</span><span>Sunset --</span></div></article>
@@ -395,6 +417,41 @@
         // college ones STANDINGS_TEAM_LABEL covers) — used by the recent-
         // results recap, grouped per team like the team legend above it.
         const TEAM_LABEL = { cardinals: 'Cardinals', asu: 'Sun Devils', ua: 'Wildcats', suns: 'Suns', nmsu: 'Aggies', nau: 'Lumberjacks', unm: 'Lobos', wyo: 'Cowboys' };
+
+        // ---------------------------------------------------------------------------
+        // Display preferences — which teams and which weather cities show.
+        // Stored per browser as the *hidden* keys, so a team or city added
+        // later shows up by default instead of being silently left out.
+        // ---------------------------------------------------------------------------
+        const PREFS_KEY = 'valleyStats.prefs.v1';
+        // Order used by the settings panel (matches the legend).
+        const TEAM_ORDER = ['cardinals', 'suns', 'asu', 'ua', 'nau', 'nmsu', 'unm', 'wyo'];
+        function readPrefs() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+                return {
+                    hiddenTeams: Array.isArray(parsed.hiddenTeams) ? parsed.hiddenTeams : [],
+                    hiddenCities: Array.isArray(parsed.hiddenCities) ? parsed.hiddenCities : []
+                };
+            } catch (e) {
+                return { hiddenTeams: [], hiddenCities: [] };
+            }
+        }
+        let prefs = readPrefs();
+        function writePrefs() {
+            try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) { /* private mode */ }
+        }
+        function isTeamShown(teamKey) { return !prefs.hiddenTeams.includes(teamKey); }
+        function isCityShown(cityKey) { return !prefs.hiddenCities.includes(cityKey); }
+        // A game between two tracked teams is stored once (dedupeMutualGames
+        // keeps one side's copy), so it stays visible as long as *either*
+        // team is on — hiding Arizona shouldn't hide ASU vs Arizona.
+        function isGameShown(game) {
+            if (isTeamShown(game.teamKey)) return true;
+            const opponentKey = Object.keys(COLLEGE_TEAM_ID_BY_KEY)
+                .find(key => COLLEGE_TEAM_ID_BY_KEY[key] === game.opponentTeamId);
+            return !!opponentKey && isTeamShown(opponentKey);
+        }
 
         // `league` is ESPN's sport/league path segment — also used to look up
         // each opponent's own team page for its overall record (see
@@ -914,7 +971,7 @@
             // Matches renderGames: a day whose only game(s) already finished
             // shows as empty here too, rather than the detail panel
             // resurfacing a result the calendar grid just hid.
-            const dayGames = games.filter(g => gameCalendarKey(g) === selectedDayKey && !hasGameEnded(g));
+            const dayGames = games.filter(g => gameCalendarKey(g) === selectedDayKey && !hasGameEnded(g) && isGameShown(g));
             const selectedDate = new Date(`${selectedDayKey}T12:00:00Z`);
             panel.hidden = false;
             clearNode(panel);
@@ -1092,7 +1149,7 @@
             // out of the grouped map below, which is what lets month
             // navigation advance forward automatically instead of still
             // offering now-empty past months.
-            const visible = games.filter(g => (filter === 'all' || g.sport === filter) && !hasGameEnded(g));
+            const visible = games.filter(g => (filter === 'all' || g.sport === filter) && !hasGameEnded(g) && isGameShown(g));
             const grouped = new Map();
             visible.forEach(game => {
                 const gameKey = gameCalendarKey(game);
@@ -1288,7 +1345,7 @@
             }).format(new Date());
             document.querySelector('#today-games-date').textContent =
                 `${new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date())} · ${getLocalTzName()}`;
-            const todayGames = games.filter(g => gameCalendarKey(g) === todayKey);
+            const todayGames = games.filter(g => gameCalendarKey(g) === todayKey && isGameShown(g));
             const list = document.querySelector('#today-games-list');
             clearNode(list);
             if (!todayGames.length) {
@@ -1344,8 +1401,8 @@
             const strip = document.querySelector('#recent-results');
             if (!strip) return;
             clearNode(strip);
-            const teamKeys = Object.keys(teamLogos).filter(teamKey =>
-                filter === 'all' || sportsFeeds.some(f => f.teamKey === teamKey && f.sport === filter));
+            const teamKeys = Object.keys(teamLogos).filter(teamKey => isTeamShown(teamKey) &&
+                (filter === 'all' || sportsFeeds.some(f => f.teamKey === teamKey && f.sport === filter)));
             teamKeys.forEach(teamKey => {
                 const results = games
                     .filter(g => g.teamKey === teamKey && hasGameEnded(g) && (filter === 'all' || g.sport === filter))
@@ -1672,7 +1729,7 @@
 
         async function loadOpponentRecords() {
             computeNextGameByTeamSport();
-            const shouldLoad = isNextGame;
+            const shouldLoad = game => isNextGame(game) && isGameShown(game);
             const needed = new Set();
             games.forEach(game => {
                 const key = opponentRecordKey(game);
@@ -1814,10 +1871,17 @@
             }
         }
 
-        function renderStandings(entries) {
+        let lastStandingsEntries = [];
+        function renderStandings(allEntries) {
             const strip = document.querySelector('#standings-strip');
             if (!strip) return;
             clearNode(strip);
+            lastStandingsEntries = allEntries;
+            const entries = allEntries.filter(e => isTeamShown(e.teamKey));
+            if (!entries.length && allEntries.length) {
+                strip.appendChild(el('p', { className: 'standings-empty', text: 'None of the teams you’re showing have conference standings.' }));
+                return;
+            }
             if (!entries.length) {
                 strip.appendChild(el('p', { className: 'standings-empty', text: 'Conference standings aren’t available right now — check back once games have been played this season.' }));
                 return;
@@ -2095,7 +2159,8 @@
 
         async function loadAlerts() {
             const banner = document.querySelector('#alert-banner');
-            const alertPoints = locations;
+            // Only the cities you've chosen to show can raise an alert banner.
+            const alertPoints = Object.fromEntries(Object.entries(locations).filter(([key]) => isCityShown(key)));
             try {
                 const results = await Promise.all(Object.entries(alertPoints).map(async ([name, coordinates]) => {
                     const response = await fetch(
@@ -2139,7 +2204,7 @@
 
         function renderLiveBanner() {
             const banner = document.querySelector('#live-banner');
-            const liveNow = games.filter(g => g.state === 'in');
+            const liveNow = games.filter(g => g.state === 'in' && isGameShown(g));
             if (!liveNow.length) {
                 banner.hidden = true;
                 clearNode(banner);
@@ -2161,7 +2226,7 @@
         function renderCountdown() {
             const elNode = document.querySelector('#next-game-countdown');
             const upcoming = games
-                .filter(g => g.state !== 'in' && g.state !== 'post' && gameDate(g) > new Date())
+                .filter(g => g.state !== 'in' && g.state !== 'post' && gameDate(g) > new Date() && isGameShown(g))
                 .sort((a, b) => gameDate(a) - gameDate(b))[0];
             if (!upcoming) {
                 elNode.textContent = 'No upcoming games scheduled';
@@ -2216,6 +2281,110 @@
         }
 
         // ---------------------------------------------------------------------------
+        // Settings panel — team and weather-city toggles
+        // ---------------------------------------------------------------------------
+        function applyCityPrefs() {
+            Object.keys(CONFIG.locations).forEach(key => {
+                const shown = isCityShown(key);
+                const card = document.querySelector(`[data-weather="${key}"]`);
+                if (card) card.hidden = !shown;
+                const tab = document.querySelector(`[data-location="${key}"]`);
+                if (tab) tab.hidden = !shown;
+            });
+            // If the forecast tab that was open is now hidden, open the first visible one.
+            const active = document.querySelector('[data-location].active');
+            if (!active || active.hidden) {
+                const first = [...document.querySelectorAll('[data-location]')].find(tab => !tab.hidden);
+                if (first) first.click();
+            }
+        }
+        function applyTeamPrefs() {
+            document.querySelectorAll('.team-legend [data-team]').forEach(item => {
+                item.hidden = !isTeamShown(item.dataset.team);
+            });
+            renderGames(document.querySelector('[data-filter].active')?.dataset.filter || 'all');
+            renderSelectedDayGames();
+            renderLiveBanner();
+            renderCountdown();
+            renderStandings(lastStandingsEntries);
+            loadOpponentRecords();
+        }
+        function buildSettingsOption(group, key, label, color) {
+            const hiddenList = group === 'team' ? prefs.hiddenTeams : prefs.hiddenCities;
+            const input = el('input', { type: 'checkbox', dataset: { group, key } });
+            input.checked = !hiddenList.includes(key);
+            const option = el('label', { className: 'settings-option' });
+            option.appendChild(input);
+            if (color) {
+                const dot = el('i', { 'aria-hidden': 'true' });
+                dot.style.background = color;
+                option.appendChild(dot);
+            }
+            option.appendChild(document.createTextNode(label));
+            return option;
+        }
+        // Keeps at least one box ticked in each group: the last one left on
+        // is disabled, so the page can't end up with no teams or no weather.
+        function lockLastChecked() {
+            ['team', 'city'].forEach(group => {
+                const boxes = [...document.querySelectorAll(`#settings-panel input[data-group="${group}"]`)];
+                const checked = boxes.filter(box => box.checked);
+                boxes.forEach(box => { box.disabled = checked.length === 1 && box.checked; });
+            });
+        }
+        function renderSettingsPanel() {
+            const teamsBox = document.querySelector('#settings-teams');
+            const citiesBox = document.querySelector('#settings-cities');
+            if (!teamsBox || !citiesBox) return;
+            clearNode(teamsBox);
+            clearNode(citiesBox);
+            const teamKeys = [...TEAM_ORDER.filter(k => k in teamLogos),
+                ...Object.keys(teamLogos).filter(k => !TEAM_ORDER.includes(k))];
+            teamKeys.forEach(key => teamsBox.appendChild(
+                buildSettingsOption('team', key, TEAM_LABEL[key] || key, `var(--team-${key})`)));
+            Object.entries(CONFIG.locations).forEach(([key, info]) => citiesBox.appendChild(
+                buildSettingsOption('city', key, `${info.label}, ${info.stateAbbr}`)));
+            lockLastChecked();
+        }
+        function setSettingsOpen(open) {
+            const panel = document.querySelector('#settings-panel');
+            const toggle = document.querySelector('#settings-toggle');
+            if (!panel || !toggle) return;
+            panel.hidden = !open;
+            toggle.setAttribute('aria-expanded', String(open));
+            if (open) panel.querySelector('input:not(:disabled)')?.focus();
+        }
+        document.querySelector('#settings-toggle')?.addEventListener('click', () => {
+            setSettingsOpen(document.querySelector('#settings-panel').hidden);
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !document.querySelector('#settings-panel')?.hidden) {
+                setSettingsOpen(false);
+                document.querySelector('#settings-toggle')?.focus();
+            }
+        });
+        document.querySelector('#settings-panel')?.addEventListener('change', event => {
+            const input = event.target;
+            if (!input.matches('input[data-group]')) return;
+            const listName = input.dataset.group === 'team' ? 'hiddenTeams' : 'hiddenCities';
+            const hidden = new Set(prefs[listName]);
+            if (input.checked) hidden.delete(input.dataset.key); else hidden.add(input.dataset.key);
+            prefs[listName] = [...hidden];
+            writePrefs();
+            lockLastChecked();
+            if (listName === 'hiddenTeams') applyTeamPrefs();
+            else { applyCityPrefs(); loadAlerts(); }
+        });
+        document.querySelector('#settings-reset')?.addEventListener('click', () => {
+            prefs = { hiddenTeams: [], hiddenCities: [] };
+            writePrefs();
+            renderSettingsPanel();
+            applyCityPrefs();
+            applyTeamPrefs();
+            loadAlerts();
+        });
+
+        // ---------------------------------------------------------------------------
         // UI wiring
         // ---------------------------------------------------------------------------
         document.querySelectorAll('[data-location]').forEach((button, index) =>
@@ -2263,7 +2432,10 @@
         }
 
         applyOpponentRecords();
+        renderSettingsPanel();
+        document.querySelectorAll('.team-legend [data-team]').forEach(item => { item.hidden = !isTeamShown(item.dataset.team); });
         renderForecast('parker');
+        applyCityPrefs();
         renderGames('all');
         updateClock();
         loadWeather();

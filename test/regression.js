@@ -203,10 +203,10 @@ setTimeout(() => {
             run(`Object.keys(CONFIG.locations).every(key =>
                 document.querySelector(\`[data-weather="\${key}"]\`) && document.querySelector(\`[data-location="\${key}"]\`))`),
             true);
-        check('loadAlerts watches every configured location, not just parker/tempe',
+        check('loadAlerts watches every configured location that is switched on (not a hardcoded parker/tempe list)',
             run(`(() => {
                 const src = loadAlerts.toString();
-                return !src.includes("alertPoints = { parker") && src.includes('alertPoints = locations');
+                return !src.includes("alertPoints = { parker") && src.includes('Object.entries(locations).filter') && src.includes('isCityShown');
             })()`),
             true);
         check('alert place labels are looked up from CONFIG.locations rather than a hardcoded parker/tempe ternary',
@@ -802,8 +802,10 @@ setTimeout(() => {
                 ];
                 await loadOpponentRecords();
                 window.fetch = realFetch;
-                window.__lazyCalls = calls.length;
-                window.__lazyRecord = games[0].opponentRecord;
+                // Count only schedule lookups — later tests run while this
+                // one awaits and can trigger other fetches (e.g. weather alerts).
+                window.__lazyCalls = calls.filter(u => String(u).includes('/schedule?')).length;
+                window.__lazyRecord = opponentRecords['basketball/mens-college-basketball|111'];
             })()`) && null, null);
 
         // Broken logos fall back to an initials badge.
@@ -824,6 +826,85 @@ setTimeout(() => {
             run(`teamLogoNode('', 'Some Opp').className`), 'opponent-placeholder');
         check('the initials badge has a style rule (it previously rendered as a bare "?")',
             /\.opponent-placeholder\s*\{[^}]*border-radius/.test(html), true);
+
+        // --- Round 10 (PUNCHLIST.md #10): team + weather-city toggles ---
+        check('settings panel lists every tracked team and every weather city, all on by default',
+            run(`(() => {
+                localStorage.removeItem(PREFS_KEY); prefs = readPrefs(); renderSettingsPanel();
+                const teams = [...document.querySelectorAll('#settings-teams input')];
+                const cities = [...document.querySelectorAll('#settings-cities input')];
+                return [teams.length, cities.length, teams.every(b => b.checked) && cities.every(b => b.checked)];
+            })()`),
+            [Object.keys(dom.window.teamLogos || {}).length || 8, 6, true]);
+        check('settings button toggles the panel and reports aria-expanded',
+            run(`(() => {
+                const b = document.querySelector('#settings-toggle'); const p = document.querySelector('#settings-panel');
+                b.click(); const opened = !p.hidden && b.getAttribute('aria-expanded') === 'true';
+                b.click(); const closed = p.hidden && b.getAttribute('aria-expanded') === 'false';
+                return opened && closed;
+            })()`),
+            true);
+        run(`
+            (function () {
+                const d = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 2 * 86400000));
+                const base = { state:'pre', calendarDate:d, dateValue:new Date(Date.now() + 2 * 86400000), time:'7:00 PM' };
+                games = [
+                    Object.assign({}, base, { teamKey:'ua', sport:'basketball', team:'Arizona Wildcats', opponent:'vs Random U', opponentTeamId:'9999' }),
+                    Object.assign({}, base, { teamKey:'asu', sport:'basketball', team:'Arizona State', opponent:'@ Arizona Wildcats', opponentTeamId:'12' }),
+                    Object.assign({}, base, { teamKey:'suns', sport:'basketball', team:'Phoenix Suns', opponent:'vs Somebody', opponentTeamId:'5' })
+                ];
+                window.__toggleDay = d;
+                const box = document.querySelector('#settings-teams input[data-key="ua"]');
+                box.checked = false;
+                box.dispatchEvent(new window.Event('change', { bubbles: true }));
+            })();
+        `);
+        check('hiding a team removes its games from the calendar',
+            run(`[...document.querySelectorAll('.calendar-cell[data-date="' + window.__toggleDay + '"] .calendar-event')].map(e => e.dataset.team).sort().join(',')`),
+            'asu,suns');
+        check('a game between a hidden and a shown tracked team still shows (ASU vs Arizona with Arizona hidden)',
+            run(`isGameShown({ teamKey:'ua', opponentTeamId:'9' }) && !isGameShown({ teamKey:'ua', opponentTeamId:'9999' })`),
+            true);
+        check('hiding a team hides its legend entry and its recent-results card',
+            run(`document.querySelector('.team-legend [data-team="ua"]').hidden && !document.querySelector('#recent-results [data-team="ua"]')`),
+            true);
+        check('hiding a team drops it from the standings strip',
+            run(`(() => { renderStandings([{ teamKey:'ua', sport:'football', overall:'5-4', conference:'3-3' }, { teamKey:'asu', sport:'football', overall:'6-3', conference:'4-2' }]);
+                return [...document.querySelectorAll('#standings-strip .standings-entry')].map(e => e.dataset.team).join(','); })()`),
+            'asu');
+        check('the choice is saved to localStorage and read back on the next visit',
+            run(`(() => { const saved = JSON.parse(localStorage.getItem(PREFS_KEY)); return saved.hiddenTeams.includes('ua') && readPrefs().hiddenTeams.includes('ua'); })()`),
+            true);
+        run(`
+            (function () {
+                document.querySelector('[data-location="parker"]').click();
+                const box = document.querySelector('#settings-cities input[data-key="parker"]');
+                box.checked = false;
+                box.dispatchEvent(new window.Event('change', { bubbles: true }));
+            })();
+        `);
+        check('hiding a city hides its weather card and its forecast tab',
+            run(`document.querySelector('[data-weather="parker"]').hidden && document.querySelector('[data-location="parker"]').hidden`),
+            true);
+        check('if the open forecast tab is hidden, the first visible city opens instead',
+            run(`document.querySelector('[data-location].active')?.dataset.location`),
+            'tempe');
+        check('the last city left on cannot be switched off (its box is disabled)',
+            run(`(() => {
+                const boxes = [...document.querySelectorAll('#settings-cities input')];
+                boxes.slice(0, -1).forEach(b => { if (b.checked) { b.checked = false; b.dispatchEvent(new window.Event('change', { bubbles: true })); } });
+                const last = boxes[boxes.length - 1];
+                return [last.checked, last.disabled, prefs.hiddenCities.length];
+            })()`),
+            [true, true, 5]);
+        check('"Show everything" turns every team and city back on',
+            run(`(() => {
+                document.querySelector('#settings-reset').click();
+                return prefs.hiddenTeams.length === 0 && prefs.hiddenCities.length === 0 &&
+                    [...document.querySelectorAll('#settings-panel input')].every(b => b.checked && !b.disabled) &&
+                    !document.querySelector('[data-weather="parker"]').hidden && !document.querySelector('.team-legend [data-team="ua"]').hidden;
+            })()`),
+            true);
 
         // Seasons roll over on their own.
         check('currentSeasons: Nov 2026 is football 2026 / basketball 2027 ("2026–27 season")',
@@ -858,7 +939,7 @@ setTimeout(() => {
         setTimeout(() => {
             check('loadOpponentRecords looks up only next-game opponents (one shared opponent = one request; a later game\'s opponent is skipped)',
                 window.__lazyCalls, 1);
-            check('the fetched record is applied to the game', window.__lazyRecord, '4-2');
+            check('the fetched record is stored for that opponent', window.__lazyRecord, '4-2');
             console.log(`\n${passed} passed, ${failed} failed.`);
             process.exit(failed ? 1 : 0);
         }, 300);

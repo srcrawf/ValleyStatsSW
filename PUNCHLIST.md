@@ -216,10 +216,29 @@ are tracked the same way ASU and Arizona are, via `sportsFeeds`.
   loses to `.calendar-event span` and gets clipped.
 - Tests: 133 checks.
 
+## 10. Choose which teams and weather cities show — done
+
+- A **settings button** (sliders icon, next to the theme toggle) opens a
+  panel with a checkbox chip for every tracked team and every weather city.
+- **Teams:** an unchecked team disappears from the calendar, day panel,
+  today's games, live banner, next-game countdown, legend, recent results
+  and standings, and its next opponent's record isn't looked up. A game
+  between two tracked teams (stored once by `dedupeMutualGames`) stays
+  visible while *either* team is on — hiding Arizona doesn't hide ASU vs
+  Arizona.
+- **Cities:** an unchecked city's weather card and 10-day-outlook tab are
+  hidden, it can't raise the weather-alert banner, and if its tab was
+  open the first visible city opens instead.
+- At least one team and one city always stay on (the last checked box is
+  disabled). "Show everything" resets.
+- Saved per browser in `localStorage` (`valleyStats.prefs.v1`) as the
+  *hidden* keys, so any team or city added later shows by default.
+- Tests: 144 checks.
+
 ## Verification
 
 All of the above is covered by `test/regression.js` (jsdom, loads the real
-`index.html`) — 57 checks as of that pass (133 as of #9), including the new-this-round
+`index.html`) — 57 checks as of that pass (144 as of #10), including the new-this-round
 config/endpoint/parsing checks (standings field extraction, rivalry
 matching, the historical-normal averaging math, the theme toggle actually
 changing computed styles, the calendar-cap "+N more" behavior, and that
