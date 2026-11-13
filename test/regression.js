@@ -243,8 +243,8 @@ setTimeout(() => {
         // all removed to reduce clutter, then NMSU alone was added back by
         // request (PUNCHLIST.md #8). Guard against UNM/NAU creeping back in
         // and check NMSU is fully wired. ---
-        check('UNM is still not tracked in sportsFeeds',
-            run(`!sportsFeeds.some(f => f.teamKey === 'unm')`),
+        check('UNM (167) and Wyoming (2751) are tracked in both football and basketball',
+            run(`[['unm','167'],['wyo','2751']].every(([k,id]) => ['football','basketball'].every(sp => sportsFeeds.some(f => f.teamKey === k && f.sport === sp && f.teamId === id)))`),
             true);
         check('NAU is tracked in both football and basketball, ESPN id 2464',
             run(`['football','basketball'].every(sp => sportsFeeds.some(f => f.teamKey === 'nau' && f.sport === sp && f.teamId === '2464'))`),
@@ -252,16 +252,23 @@ setTimeout(() => {
         check('NMSU is tracked in both football and basketball, ESPN id 166',
             run(`['football','basketball'].every(sp => sportsFeeds.some(f => f.teamKey === 'nmsu' && f.sport === sp && f.teamId === '166'))`),
             true);
-        check('teamLogos has NMSU and NAU but no UNM entry',
-            run(`('nmsu' in teamLogos) && ('nau' in teamLogos) && !('unm' in teamLogos)`),
+        check('teamLogos has every tracked college team (NMSU, NAU, UNM, Wyoming)',
+            run(`['nmsu','nau','unm','wyo'].every(k => k in teamLogos)`),
             true);
         check('CONFIG.standingsGroups covers ASU/UA/NMSU/NAU with the verified group ids (NMSU C-USA 12/11, NAU Big Sky 20/5)',
             run(`CONFIG.standingsGroups.football.nmsu === '12' && CONFIG.standingsGroups.basketball.nmsu === '11' &&
                 CONFIG.standingsGroups.football.nau === '20' && CONFIG.standingsGroups.basketball.nau === '5' &&
-                ['football', 'basketball'].every(sport => Object.keys(CONFIG.standingsGroups[sport]).sort().join(',') === 'asu,nau,nmsu,ua')`),
+                CONFIG.standingsGroups.football.unm === '17' && CONFIG.standingsGroups.basketball.unm === '44' &&
+                CONFIG.standingsGroups.football.wyo === '17' && CONFIG.standingsGroups.basketball.wyo === '44' &&
+                ['football', 'basketball'].every(sport => Object.keys(CONFIG.standingsGroups[sport]).sort().join(',') === 'asu,nau,nmsu,ua,unm,wyo')`),
             true);
         check('NAU has a legend entry, a team color and a standings label',
             run(`!!document.querySelector('.team-legend [data-team="nau"]') && STANDINGS_TEAM_LABEL.nau === 'Lumberjacks'`) && /--team-nau:#2b6cb0/.test(html),
+            true);
+        check('UNM and Wyoming have legend entries, team colors (UNM wine from #7) and standings labels',
+            run(`['unm','wyo'].every(k => !!document.querySelector('.team-legend [data-team="' + k + '"]')) && STANDINGS_TEAM_LABEL.unm === 'Lobos' && STANDINGS_TEAM_LABEL.wyo === 'Cowboys'`) &&
+                /--team-unm:#b8285f/.test(html) && /--team-wyo:#9c6b45/.test(html) &&
+                /\.calendar-event\[data-team="wyo"\]/.test(html),
             true);
         check('every sports feed carries an ESPN league path (used for opponent-record lookups)',
             run(`sportsFeeds.every(f => /^(football|basketball)[/][a-z-]+$/.test(f.league))`),
@@ -278,9 +285,14 @@ setTimeout(() => {
         `);
         check('isRivalryGame flags ASU vs Arizona (Territorial Cup)', run(`isRivalryGame(window.__territorialCup)`), true);
         check('isRivalryGame does not flag an unrelated matchup', run(`isRivalryGame(window.__notARivalry)`), false);
-        check('RIVALRY_PAIRS does not reference the untracked UNM key',
-            run(`!RIVALRY_PAIRS.flat().includes('unm')`),
+        check('every RIVALRY_PAIRS key is a tracked college team',
+            run(`RIVALRY_PAIRS.flat().every(k => k in COLLEGE_TEAM_ID_BY_KEY)`),
             true);
+        check('NMSU vs UNM is flagged from either side (Rio Grande Rivalry)',
+            run(`[isRivalryGame({ teamKey: 'nmsu', opponentTeamId: '167' }), isRivalryGame({ teamKey: 'unm', opponentTeamId: '166' })]`),
+            [true, true]);
+        check('Wyoming vs Colorado State (36) is flagged — Border War',
+            run(`isRivalryGame({ teamKey: 'wyo', opponentTeamId: '36' })`), true);
         check('ASU vs NAU and Arizona vs NAU are flagged as in-state rivalries',
             run(`[isRivalryGame({ teamKey: 'asu', opponentTeamId: '2464' }), isRivalryGame({ teamKey: 'nau', opponentTeamId: '12' })]`),
             [true, true]);
@@ -794,6 +806,25 @@ setTimeout(() => {
                 window.__lazyRecord = games[0].opponentRecord;
             })()`) && null, null);
 
+        // Broken logos fall back to an initials badge.
+        check('teamInitials builds a short badge label, ignoring parenthetical notes',
+            run(`[teamInitials('Embry Riddle (AZ) Eagles'), teamInitials('UTEP Miners'), teamInitials('')]`),
+            ['ER', 'UM', '?']);
+        check('a logo that fails to load is replaced by an initials badge (no broken image)',
+            run(`(() => {
+                const wrap = document.createElement('div');
+                const img = teamLogoNode('https://example.test/missing.png', 'Embry Riddle (AZ) Eagles');
+                wrap.appendChild(img);
+                img.dispatchEvent(new window.Event('error'));
+                const badge = wrap.firstChild;
+                return [badge.tagName, badge.className, badge.textContent];
+            })()`),
+            ['SPAN', 'opponent-placeholder', 'ER']);
+        check('a missing logo URL goes straight to the initials badge',
+            run(`teamLogoNode('', 'Some Opp').className`), 'opponent-placeholder');
+        check('the initials badge has a style rule (it previously rendered as a bare "?")',
+            /\.opponent-placeholder\s*\{[^}]*border-radius/.test(html), true);
+
         // Seasons roll over on their own.
         check('currentSeasons: Nov 2026 is football 2026 / basketball 2027 ("2026–27 season")',
             run(`(() => { const s = currentSeasons(new Date(2026, 10, 11)); return [s.football, s.basketball, s.label]; })()`),
@@ -812,6 +843,9 @@ setTimeout(() => {
         check('sample-schedule rows dated before today are dropped instead of showing as upcoming',
             run(`[isStaleFallback({ date: '2000-01-01' }), isStaleFallback({ date: '2999-01-01' }), isStaleFallback({ date: '2000-01-01', state: 'post' })]`),
             [true, false, false]);
+        check('sample schedule includes UNM and Wyoming',
+            run(`['unm','wyo'].every(k => fallbackGamesRaw.some(g => g.teamKey === k))`),
+            true);
         check('sample schedule includes NMSU in both sports',
             run(`['football','basketball'].every(sp => fallbackGamesRaw.some(g => g.teamKey === 'nmsu' && g.sport === sp))`),
             true);

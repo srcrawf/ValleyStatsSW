@@ -10,8 +10,8 @@ built and the open questions each item raised along the way, in case any of
 those decisions need revisiting later (e.g. real logos/branding, tuning the
 standings display once more of the season has been played).
 
-**Update (#8):** NMSU and NAU were added back by request; UNM is still
-untracked.
+**Update (#8, #9):** NMSU and NAU were added back by request (#8), then
+UNM plus a new team, Wyoming (#9).
 
 **Update:** UNM, NMSU, and NAU (item #7's new teams) were later removed from
 sports tracking by request — the calendar/today's-games/standings had gotten
@@ -194,10 +194,32 @@ are tracked the same way ASU and Arizona are, via `sportsFeeds`.
   and a fix for a date-dependent check that broke once Oct 3 became a past
   week.
 
+## 9. UNM + Wyoming, and the missing-logo fix — done
+
+- **UNM re-added** (football + men's basketball): ESPN id 167, Mountain
+  West — group 17 (football) / 44 (basketball), verified from its live
+  schedule feed. Lobos wine `#b8285f` from #7.
+- **Wyoming added** (new): ESPN id 2751, also Mountain West 17 / 44.
+  Color `#9c6b45` — a brown that stays visible on the dark background
+  (their real brown, `#492f24`, disappears) and doesn't collide with the
+  Aggies gold.
+- Rivalries: NMSU vs UNM is now a tracked-vs-tracked pair (Rio Grande
+  Rivalry); Wyoming vs Colorado State (id 36) flagged as the Border War.
+- Sample schedule: two basketball games each for UNM and Wyoming (no
+  upcoming football game could be confirmed from the feeds).
+- **Missing-logo fix:** ESPN sends an *empty* logo URL for schools it has
+  no artwork for (Embry-Riddle, id 111226). `safeImageUrl('')` resolved
+  that to the page's own URL, so the `<img>` showed as broken. Logos now go
+  through `teamLogoNode()`: an empty URL or an image that fails to load
+  becomes a round initials badge ("ER"). The badge rule is
+  `.matchup-logos .opponent-placeholder` — a plain `.opponent-placeholder`
+  loses to `.calendar-event span` and gets clipped.
+- Tests: 133 checks.
+
 ## Verification
 
 All of the above is covered by `test/regression.js` (jsdom, loads the real
-`index.html`) — 57 checks as of that pass (125 as of #8), including the new-this-round
+`index.html`) — 57 checks as of that pass (133 as of #9), including the new-this-round
 config/endpoint/parsing checks (standings field extraction, rivalry
 matching, the historical-normal averaging math, the theme toggle actually
 changing computed styles, the calendar-cap "+N more" behavior, and that
