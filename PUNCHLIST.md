@@ -235,10 +235,27 @@ are tracked the same way ASU and Arizona are, via `sportsFeeds`.
   *hidden* keys, so any team or city added later shows by default.
 - Tests: 144 checks.
 
+## 11. 7 PM Eastern games shown a day late as "TBD" — fixed
+
+- `normalizeGame` treated any start at exactly midnight UTC as "time not
+  announced". But a real 7:00 PM EST start *is* T00:00Z, so those games
+  showed as TBD and — since the TBD path took the UTC date — on the
+  following day. Reported on Arizona @ Kansas State (Sat Nov 21, 5:00 PM
+  MT, shown Sun Nov 22 "TBD"); it hit 18 upcoming games across six teams.
+- Now TBD comes only from ESPN's own markers: `timeValid: false` (event or
+  competition) or a "TBD" status. Checked against the live feeds on
+  Nov 20, 2026: ESPN's real TBD games are all `timeValid:false` stamped
+  T05:00Z (midnight Eastern), and every corrected game matches ESPN's own
+  "7:00 PM EST" text.
+- TBD games take their day in Eastern time (ESPN's anchor), not UTC.
+- Sports cache key bumped to `valleyStats.sports.v2` so cached games with
+  the wrong day aren't reused.
+- Tests: 148 checks.
+
 ## Verification
 
 All of the above is covered by `test/regression.js` (jsdom, loads the real
-`index.html`) — 57 checks as of that pass (144 as of #10), including the new-this-round
+`index.html`) — 57 checks as of that pass (148 as of #11), including the new-this-round
 config/endpoint/parsing checks (standings field extraction, rivalry
 matching, the historical-normal averaging math, the theme toggle actually
 changing computed styles, the calendar-cap "+N more" behavior, and that

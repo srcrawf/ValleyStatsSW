@@ -906,6 +906,28 @@ setTimeout(() => {
             })()`),
             true);
 
+        // --- Round 11 (PUNCHLIST.md #11): 7 PM Eastern games were shown a day late as "TBD" ---
+        run(`
+            window.__tbdFeed = { sport:'football', league:'football/college-football', team:'Arizona Wildcats', teamId:'12', teamKey:'ua' };
+            window.__mkEvent = (date, timeValid, shortDetail) => ({
+                id: 'x' + date, date, timeValid,
+                competitions: [{ timeValid, status: { type: { state: 'pre', shortDetail } },
+                    competitors: [ { homeAway:'away', team:{ id:'12', displayName:'Arizona Wildcats', shortDisplayName:'Arizona' } },
+                                   { homeAway:'home', team:{ id:'2306', displayName:'Kansas State Wildcats', shortDisplayName:'Kansas St' } } ] }]
+            });
+        `);
+        check('a real 7:00 PM Eastern start (T00:00Z, timeValid) lands on the right Mountain day and time, not "TBD" the next day',
+            run(`(() => { const g = normalizeGame(__mkEvent('2026-11-22T00:00Z', true, '11/21 - 7:00 PM EST'), __tbdFeed); return [g.calendarDate, g.time]; })()`),
+            ['2026-11-21', '5:00 PM']);
+        check('a genuinely unscheduled game (timeValid:false, T05:00Z = midnight Eastern) shows TBD on its own day',
+            run(`(() => { const g = normalizeGame(__mkEvent('2027-02-06T05:00Z', false, 'TBD'), __tbdFeed); return [g.calendarDate, g.time]; })()`),
+            ['2027-02-06', 'TBD']);
+        check('TBD during daylight time (T04:00Z = midnight EDT) also keeps its own day',
+            run(`(() => { const g = normalizeGame(__mkEvent('2027-03-20T04:00Z', false, 'TBD'), __tbdFeed); return [g.calendarDate, g.time, g.month, String(g.day)]; })()`),
+            ['2027-03-20', 'TBD', 'MAR', '20']);
+        check('the sports cache key was bumped so games cached with the wrong day are not reused',
+            run(`CONFIG.sportsCacheKey`), 'valleyStats.sports.v2');
+
         // Seasons roll over on their own.
         check('currentSeasons: Nov 2026 is football 2026 / basketball 2027 ("2026–27 season")',
             run(`(() => { const s = currentSeasons(new Date(2026, 10, 11)); return [s.football, s.basketball, s.label]; })()`),

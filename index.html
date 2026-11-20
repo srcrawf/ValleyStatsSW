@@ -347,7 +347,7 @@
             gameTimeZone: 'America/Denver',
             pollIntervalMs: 15 * 60 * 1000,
             sportsCacheTtlMs: 30 * 60 * 1000,
-            sportsCacheKey: 'valleyStats.sports.v1',
+            sportsCacheKey: 'valleyStats.sports.v2', // v2: games cached by the old TBD check had the wrong day
             // Seasons are worked out from today's date (see currentSeasons
             // below) so they roll over on their own each year. To pin a
             // season by hand, replace the getter with a number.
@@ -1482,17 +1482,30 @@
             const shortDetail = statusObj?.type?.shortDetail || statusObj?.type?.detail || statusObj?.type?.description || '';
 
             const date = new Date(event.date);
-            const isTBD = event.timeValid === false ||
-                shortDetail.includes('TBD') ||
-                (date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0);
+            // A game with no kickoff/tip time yet is flagged by ESPN itself:
+            // timeValid:false (on the event and the competition) and a
+            // "TBD" status, with the date stamped at midnight *Eastern*
+            // (T05:00Z / T04:00Z). Don't guess from the timestamp — the old
+            // "midnight UTC means TBD" check misread every real 7:00 PM
+            // Eastern start (T00:00Z) as TBD and, using the UTC date, put it
+            // on the following day (e.g. Arizona @ Kansas State, Sat Nov 21,
+            // 5:00 PM MT, showed as Sun Nov 22 "TBD").
+            const isTBD = event.timeValid === false || competition?.timeValid === false ||
+                /\bTBD\b/.test(shortDetail);
 
             let parts, calendarDate, timeStr, dateValue;
             if (isTBD) {
-                const year = date.getUTCFullYear();
-                const monthNum = date.getUTCMonth() + 1;
-                const dayNum = date.getUTCDate();
+                // Read the day in Eastern time — the zone ESPN anchors
+                // date-only games to — rather than UTC.
+                const et = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'America/New_York', year: 'numeric', month: 'numeric', day: 'numeric'
+                }).formatToParts(date).map(p => [p.type, p.value]));
+                const year = Number(et.year);
+                const monthNum = Number(et.month);
+                const dayNum = Number(et.day);
                 calendarDate = `${year}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-                const utcMonthStr = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short' }).format(date).toUpperCase();
+                const utcMonthStr = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short' })
+                    .format(new Date(Date.UTC(year, monthNum - 1, 15))).toUpperCase();
                 parts = { month: utcMonthStr, day: dayNum };
                 timeStr = 'TBD';
                 dateValue = new Date(Date.UTC(year, monthNum - 1, dayNum, 12, 0, 0));
