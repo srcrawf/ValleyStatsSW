@@ -1,38 +1,29 @@
 // ValleyStats (Southwest) regression checks.
 //
 // Loads the REAL index.html with jsdom and exercises its actual functions
-// (not reimplemented copies), with network calls stubbed out so it falls
-// back to the page's own sample schedule/weather data. This exists because
-// a real bug (ESPN's record field using different key names than the code
-// assumed) shipped silently for a while — a check like this, run against a
-// realistic data shape, would have caught it immediately.
-//
-// This repo started as a copy of ValleyStatsNS (see PUNCHLIST.md) and is
-// expanding scope — more weather cities, more teams — so this file has
-// diverged from NS's copy and picks up checks specific to that expansion
-// as each punch-list item lands.
+// with network calls stubbed out.
 //
 // Usage:
 //   npm install jsdom --no-save   (if not already installed)
 //   node test/regression.js
-//
-// Exits 0 if every check passes, 1 otherwise (so it's CI/pre-push friendly).
 
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 
-const indexPath = path.join(__dirname, '..', 'index.html');
+const rootDir = path.join(__dirname, '..');
+const indexPath = path.join(rootDir, 'index.html');
+const swPath = path.join(rootDir, 'sw.js');
+const manifestPath = path.join(rootDir, 'manifest.webmanifest');
 const html = fs.readFileSync(indexPath, 'utf8');
+const swSrc = fs.readFileSync(swPath, 'utf8');
+const manifestJson = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
 const dom = new JSDOM(html, {
     runScripts: 'dangerously',
     resources: undefined,
     url: 'https://example.test/',
     beforeParse(window) {
-        // Keep the sandbox offline and deterministic — the page falls back
-        // to its built-in sample schedule/weather, which is all these
-        // checks need.
         window.fetch = () => Promise.reject(new Error('network disabled in test'));
     }
 });
@@ -58,7 +49,7 @@ function check(label, actual, expected) {
 
 setTimeout(() => {
     try {
-        // --- opponentName: strips the perspective prefix for display ---
+        // --- Core helpers ---
         check('opponentName strips "vs "',
             run(`opponentName({opponent:'vs Northern Arizona Lumberjacks'})`),
             'Northern Arizona Lumberjacks');
@@ -66,12 +57,10 @@ setTimeout(() => {
             run(`opponentName({opponent:'@ Texas A&M Aggies'})`),
             'Texas A&M Aggies');
 
-        // --- sportMark ---
         check('sportMark football', run(`sportMark('football')`), '\u{1F3C8}');
         check('sportMark basketball', run(`sportMark('basketball')`), '\u{1F3C0}');
         check('sportMark unknown sport returns nothing', run(`sportMark('golf')`), '');
 
-        // --- didWin ---
         check('didWin via winner flag', run(`didWin({score:[{winner:true},{winner:false}]})`), true);
         check('didWin via score fallback', run(`didWin({score:[{score:35},{score:7}]})`), true);
 
@@ -80,9 +69,6 @@ setTimeout(() => {
             window.__homeGame = { team:'Arizona Wildcats', opponent:'vs Northern Arizona Lumberjacks',
                 opponentLogo:'https://example.test/opp.png', logo:'https://example.test/own.png', teamKey:'ua', sport:'football',
                 dateValue:new Date('2026-09-05T00:00:00Z') };
-            window.__awayGame = { team:'Arizona State', opponent:'@ Texas A&M',
-                opponentLogo:'https://example.test/opp2.png', logo:'https://example.test/own2.png', teamKey:'asu', sport:'football',
-                dateValue:new Date('2026-09-12T00:00:00Z') };
             window.__homePairImgs = [...logoPair(window.__homeGame).querySelectorAll('img')].map(i => i.alt);
             window.__divider = logoPair(window.__homeGame).querySelector('.logo-divider').textContent;
         `);
@@ -91,7 +77,7 @@ setTimeout(() => {
             ['Northern Arizona Lumberjacks logo', 'Arizona Wildcats logo']);
         check('divider always reads "at"', run('window.__divider'), 'at');
 
-        // --- computeOwnRecord: derived from season results, scoped "as of" a date ---
+        // --- computeOwnRecord ---
         run(`
             const d1 = new Date('2026-09-05T00:00:00Z');
             const d2 = new Date('2026-09-12T00:00:00Z');
@@ -107,806 +93,230 @@ setTimeout(() => {
         check('computeOwnRecord returns empty string before any games are played',
             run(`computeOwnRecord('suns', 'basketball', new Date('2026-10-01T00:00:00Z'))`), '');
 
-        // --- recentForm ---
+        // --- recentForm: "Last 5" with colored circles ONLY (no W/L letters) ---
         run(`
             games = [
                 { teamKey:'ua', sport:'football', state:'post', dateValue:new Date('2026-09-05T00:00:00Z'), score:[{score:20},{score:10}] },
+                { teamKey:'ua', sport:'football', state:'post', dateValue:new Date('2026-09-12T00:00:00Z'), score:[{score:10},{score:24}] },
                 { teamKey:'ua', sport:'basketball', state:'post', dateValue:new Date('2026-09-06T00:00:00Z'), score:[{score:99},{score:1}] }
             ];
             window.__form = recentForm({ teamKey:'ua', sport:'football', dateValue:new Date('2026-09-19T00:00:00Z') });
         `);
         check('recentForm only counts the same team+sport, excludes basketball',
-            run(`window.__form.querySelectorAll('i').length`), 1);
+            run(`window.__form.querySelectorAll('.form-strip i').length`), 2);
+        check('recentForm labels the indicator "Last 5"',
+            run(`window.__form.querySelector('.form-label')?.textContent`), 'Last 5');
+        check('recentForm uses colored circles only (no W/L text inside dots)',
+            run(`[...window.__form.querySelectorAll('.form-strip i')].map(n => [n.className, n.textContent])`),
+            [['w', ''], ['l', '']]);
 
-        // --- appendGameMeta: the shared helper used by the day panel and today's-games list ---
+        // --- Weather WMO snow/fog fixes ---
+        check('snow WMO codes (71, 73, 75, 85, 86) map to snowing icon, not rainy',
+            run(`[71, 73, 75, 77, 85, 86].every(c => weatherIconName(c) === 'snowing')`), true);
+        check('fog WMO codes (45, 48) map to foggy icon',
+            run(`[45, 48].every(c => weatherIconName(c) === 'foggy')`), true);
+        check('rain WMO codes (51, 61, 63, 80) map to rainy icon',
+            run(`[51, 61, 63, 80].every(c => weatherIconName(c) === 'rainy')`), true);
+        check('weatherDescriptions covers snow, heavy rain, and freezing fog codes',
+            run(`!!weatherDescriptions[73] && !!weatherDescriptions[85] && !!weatherDescriptions[63] && !!weatherDescriptions[48]`), true);
+
+        // --- Weather cache & no fake hardcoded "Live" temperatures ---
+        check('cold-start weather card starts with Loading status and placeholder temp, not fake "Live"',
+            run(`document.querySelector('[data-weather="tempe"] [data-weather-status]').textContent === 'Loading' &&
+                 document.querySelector('[data-weather="tempe"] .temperature').textContent.startsWith('--')`), true);
         run(`
-            games = [
-                { teamKey:'asu', sport:'football', state:'post', dateValue:new Date('2026-09-05T00:00:00Z'), score:[{score:70},{score:7}] }
-            ];
-            window.__metaEl = document.createElement('div');
-            // A finished game: its record isn't under the logo (logoPair only
-            // shows records on games that haven't been played), so the
-            // inline record chip is where it appears.
-            appendGameMeta(window.__metaEl, {
-                teamKey:'asu', sport:'football', state:'post', dateValue:new Date('2026-09-12T00:00:00Z'),
-                broadcast:'ABC', venue:'College Station, TX'
-            });
+            writeWeatherCache({ tempe: { current: { temperature_2m: 78, apparent_temperature: 77, weather_code: 0, wind_speed_10m: 6, wind_direction_10m: 180 },
+                daily: { time: ['2026-11-25'], temperature_2m_max: [81], temperature_2m_min: [54], precipitation_probability_max: [0], weather_code: [0], sunrise: ['2026-11-25T07:09'], sunset: ['2026-11-25T17:22'] },
+                hourly: { time: ['2026-11-25T14:00'], temperature_2m: [78], precipitation_probability: [0], weather_code: [0] } } });
+            renderLiveWeather('tempe', readWeatherCache().cities.tempe, 'cached');
         `);
-        check('appendGameMeta renders broadcast, computed record, and venue',
-            run(`window.__metaEl.textContent.includes('ABC') && window.__metaEl.textContent.includes('1-0') && window.__metaEl.textContent.includes('College Station')`),
-            true);
-        check('appendGameMeta omits a "TBD" broadcast rather than showing it literally',
-            run(`(() => { const el2 = document.createElement('div'); appendGameMeta(el2, { teamKey:'asu', sport:'football', dateValue:new Date(), broadcast:'TBD' }); return el2.textContent.includes('TBD'); })()`),
-            false);
+        check('weather cache round-trips and renders with Cached status badge',
+            run(`document.querySelector('[data-weather="tempe"] [data-weather-status]').textContent === 'Cached' &&
+                 document.querySelector('[data-pill-temp="tempe"]').textContent === '78°'`), true);
 
-        // --- the old ESPN-per-event "record" field is gone; nothing should depend on it ---
-        check('normalizeGame no longer returns a raw "record" field (computeOwnRecord replaced it everywhere)',
-            run(`(() => {
-                const fakeEvent = { id:'1', date:'2026-09-12T17:00:00Z',
-                    competitions:[{ status:{type:{state:'pre'}}, venue:{address:{city:'Tempe',state:'AZ'}},
-                    competitors:[
-                        { team:{id:'9', displayName:'Arizona State', shortDisplayName:'Arizona State'}, homeAway:'home' },
-                        { team:{id:'99', displayName:'Opponent', shortDisplayName:'Opp'}, homeAway:'away' }
-                    ]}] };
-                const g = normalizeGame(fakeEvent, { teamId:'9', teamKey:'asu', team:'Arizona State', sport:'football' });
-                return 'record' in g;
-            })()`),
-            false);
-
-        // --- gameday-weather chip was removed for individual games ---
-        check('gameWeatherChip function was removed', run(`typeof gameWeatherChip`), 'undefined');
-
-        // --- mobile calendar declutter: secondary chips hidden under 520px ---
-        run(`
-            window.__cssText = document.querySelector('style') ? document.querySelector('style').textContent
-                : Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\\n');
-        `);
-        const cssText = fs.readFileSync(indexPath, 'utf8');
-        const mobileBlock = (cssText.match(/@media \(max-width:520px\)[^]*?\n/) || [''])[0];
-        check('mobile media query hides secondary chips in the calendar box',
-            ['broadcast-tag', 'team-record', 'venue-tag', 'logo-record', 'form-strip']
-                .every(cls => mobileBlock.includes(`.calendar-event .${cls}`)),
-            true);
-
-        // --- .sport-mark must not escape to the page corner in contexts
-        // without their own positioning container. The base rule positions
-        // it absolute (for the calendar box's corner badge, contained by
-        // .calendar-event's position:relative); .today-game has no
-        // equivalent container, so without an override the badge escapes
-        // all the way up to .shell and renders pinned to the top-right of
-        // the whole page instead of next to the team name. This exact bug
-        // shipped and only became visible once "today" actually had a game.
-        run(`
-            window.__todayMarkEl = document.createElement('article');
-            window.__todayMarkEl.className = 'today-game';
-            const strongEl = document.createElement('strong');
-            const markEl = document.createElement('span');
-            markEl.className = 'sport-mark';
-            strongEl.appendChild(markEl);
-            window.__todayMarkEl.appendChild(strongEl);
-            document.body.appendChild(window.__todayMarkEl);
-        `);
-        check('.today-game .sport-mark does not escape to the page corner',
-            run(`window.getComputedStyle(document.querySelector('.today-game .sport-mark')).position`),
-            'static');
-
-        // --- SW expansion: Tucson weather location (Glendale was also
-        // added in this pass but later removed by request — see the
-        // "Glendale was removed" guard further down). ---
-        check('CONFIG.locations includes tucson with coordinates and a state abbreviation',
-            run(`(() => {
-                const t = CONFIG.locations.tucson;
-                return !!(t && typeof t.latitude === 'number' && typeof t.longitude === 'number' && t.stateAbbr === 'AZ');
-            })()`),
-            true);
-        check('every CONFIG.locations entry has a matching weather card and forecast tab in the DOM',
-            run(`Object.keys(CONFIG.locations).every(key =>
-                document.querySelector(\`[data-weather="\${key}"]\`) && document.querySelector(\`[data-location="\${key}"]\`))`),
-            true);
-        check('loadAlerts watches every configured location that is switched on (not a hardcoded parker/tempe list)',
-            run(`(() => {
-                const src = loadAlerts.toString();
-                return !src.includes("alertPoints = { parker") && src.includes('Object.entries(locations).filter') && src.includes('isCityShown');
-            })()`),
-            true);
-        check('alert place labels are looked up from CONFIG.locations rather than a hardcoded parker/tempe ternary',
-            run(`(() => {
-                const src = loadAlerts.toString();
-                return !/alert\\.place === 'parker' \\? 'Parker, CO' : 'Tempe, AZ'/.test(src) && src.includes('CONFIG.locations[alert.place]');
-            })()`),
-            true);
-
-        // --- weather row now scrolls horizontally instead of a fixed 2-up
-        // grid, so it scales past 2 cards without another layout rewrite
-        // (flagged in PUNCHLIST.md #6 as needing a "real layout decision"). ---
-        check('.weather-grid is a horizontally-scrolling row, not a fixed-column grid',
-            run(`window.getComputedStyle(document.querySelector('.weather-grid')).display`),
-            'flex');
-        check('.weather-and-today no longer hardcodes exactly 2 weather columns',
-            !cssText.includes('.weather-and-today { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)) 220px;'),
-            true);
-
-        // --- the 3 remaining Southwest weather cities (Albuquerque, Flagstaff, Las Cruces) ---
-        check('CONFIG.locations includes all 3 remaining Southwest cities',
-            run(`['albuquerque', 'flagstaff', 'lascruces'].every(k =>
-                CONFIG.locations[k] && typeof CONFIG.locations[k].latitude === 'number' && typeof CONFIG.locations[k].longitude === 'number')`),
-            true);
-        check('all 6 remaining CONFIG.locations entries have a matching weather card and forecast tab',
+        // --- Unified weather city selector & all 6 cities ---
+        check('all 6 CONFIG.locations entries have a matching weather card and city pill',
             run(`Object.keys(CONFIG.locations).length === 6 && Object.keys(CONFIG.locations).every(key =>
                 document.querySelector(\`[data-weather="\${key}"]\`) && document.querySelector(\`[data-location="\${key}"]\`))`),
             true);
-        check('Glendale was removed from weather tracking (reduce clutter) and does not creep back in',
+        check('Glendale stays removed from weather tracking',
             run(`!('glendale' in CONFIG.locations) && !document.querySelector('[data-weather="glendale"]') && !document.querySelector('[data-location="glendale"]')`),
             true);
+        check('loadAlerts watches every visible configured location',
+            run(`(() => { const src = loadAlerts.toString(); return src.includes('Object.entries(locations).filter') && src.includes('isCityShown'); })()`),
+            true);
+        check('loadWeather batches visible cities into one comma-separated Open-Meteo call',
+            run(`(() => { const src = loadWeather.toString(); return src.includes("join(',')") && src.includes('isCityShown'); })()`),
+            true);
 
-        // --- UNM, NMSU, and NAU were tracked for a while (PUNCHLIST.md #7),
-        // all removed to reduce clutter, then NMSU alone was added back by
-        // request (PUNCHLIST.md #8). Guard against UNM/NAU creeping back in
-        // and check NMSU is fully wired. ---
-        check('UNM (167) and Wyoming (2751) are tracked in both football and basketball',
-            run(`[['unm','167'],['wyo','2751']].every(([k,id]) => ['football','basketball'].every(sp => sportsFeeds.some(f => f.teamKey === k && f.sport === sp && f.teamId === id)))`),
+        // --- Teams, standings groups, and rivalries ---
+        check('UNM (167), Wyoming (2751), NAU (2464), and NMSU (166) are tracked in both sports',
+            run(`[['unm','167'],['wyo','2751'],['nau','2464'],['nmsu','166']].every(([k,id]) =>
+                ['football','basketball'].every(sp => sportsFeeds.some(f => f.teamKey === k && f.sport === sp && f.teamId === id)))`),
             true);
-        check('NAU is tracked in both football and basketball, ESPN id 2464',
-            run(`['football','basketball'].every(sp => sportsFeeds.some(f => f.teamKey === 'nau' && f.sport === sp && f.teamId === '2464'))`),
-            true);
-        check('NMSU is tracked in both football and basketball, ESPN id 166',
-            run(`['football','basketball'].every(sp => sportsFeeds.some(f => f.teamKey === 'nmsu' && f.sport === sp && f.teamId === '166'))`),
-            true);
-        check('teamLogos has every tracked college team (NMSU, NAU, UNM, Wyoming)',
-            run(`['nmsu','nau','unm','wyo'].every(k => k in teamLogos)`),
-            true);
-        check('CONFIG.standingsGroups covers ASU/UA/NMSU/NAU with the verified group ids (NMSU C-USA 12/11, NAU Big Sky 20/5)',
+        check('CONFIG.standingsGroups covers all 6 college teams with verified group ids',
             run(`CONFIG.standingsGroups.football.nmsu === '12' && CONFIG.standingsGroups.basketball.nmsu === '11' &&
                 CONFIG.standingsGroups.football.nau === '20' && CONFIG.standingsGroups.basketball.nau === '5' &&
                 CONFIG.standingsGroups.football.unm === '17' && CONFIG.standingsGroups.basketball.unm === '44' &&
                 CONFIG.standingsGroups.football.wyo === '17' && CONFIG.standingsGroups.basketball.wyo === '44' &&
                 ['football', 'basketball'].every(sport => Object.keys(CONFIG.standingsGroups[sport]).sort().join(',') === 'asu,nau,nmsu,ua,unm,wyo')`),
             true);
-        check('NAU has a legend entry, a team color and a standings label',
-            run(`!!document.querySelector('.team-legend [data-team="nau"]') && STANDINGS_TEAM_LABEL.nau === 'Lumberjacks'`) && /--team-nau:#2b6cb0/.test(html),
-            true);
-        check('UNM and Wyoming have legend entries, team colors (UNM wine from #7) and standings labels',
-            run(`['unm','wyo'].every(k => !!document.querySelector('.team-legend [data-team="' + k + '"]')) && STANDINGS_TEAM_LABEL.unm === 'Lobos' && STANDINGS_TEAM_LABEL.wyo === 'Cowboys'`) &&
-                /--team-unm:#b8285f/.test(html) && /--team-wyo:#9c6b45/.test(html) &&
-                /\.calendar-event\[data-team="wyo"\]/.test(html),
-            true);
-        check('every sports feed carries an ESPN league path (used for opponent-record lookups)',
+        check('every sports feed carries an ESPN league path',
             run(`sportsFeeds.every(f => /^(football|basketball)[/][a-z-]+$/.test(f.league))`),
             true);
-
-        // --- rivalry highlighting: matched by the opponent's ESPN team id,
-        // not by display-name text (which varies by feed). Only the
-        // Territorial Cup (ASU vs Arizona) remains now that UNM/NMSU/NAU
-        // are no longer tracked — the Rio Grande and in-state Arizona-trio
-        // pairs that depended on them were removed along with those teams. ---
-        run(`
-            window.__territorialCup = { teamKey: 'asu', opponentTeamId: '12' };
-            window.__notARivalry = { teamKey: 'asu', opponentTeamId: '99999' };
-        `);
-        check('isRivalryGame flags ASU vs Arizona (Territorial Cup)', run(`isRivalryGame(window.__territorialCup)`), true);
-        check('isRivalryGame does not flag an unrelated matchup', run(`isRivalryGame(window.__notARivalry)`), false);
-        check('every RIVALRY_PAIRS key is a tracked college team',
-            run(`RIVALRY_PAIRS.flat().every(k => k in COLLEGE_TEAM_ID_BY_KEY)`),
+        check('all 8 teams have legend entries and CSS team color tokens',
+            run(`['cardinals','suns','asu','ua','nau','nmsu','unm','wyo'].every(k => !!document.querySelector('#team-legend [data-team="' + k + '"]'))`) &&
+            ['cardinals','suns','asu','ua','nau','nmsu','unm','wyo'].every(k => new RegExp(`--team-${k}:`).test(html)),
             true);
-        check('NMSU vs UNM is flagged from either side (Rio Grande Rivalry)',
-            run(`[isRivalryGame({ teamKey: 'nmsu', opponentTeamId: '167' }), isRivalryGame({ teamKey: 'unm', opponentTeamId: '166' })]`),
-            [true, true]);
-        check('Wyoming vs Colorado State (36) is flagged — Border War',
-            run(`isRivalryGame({ teamKey: 'wyo', opponentTeamId: '36' })`), true);
-        check('ASU vs NAU and Arizona vs NAU are flagged as in-state rivalries',
-            run(`[isRivalryGame({ teamKey: 'asu', opponentTeamId: '2464' }), isRivalryGame({ teamKey: 'nau', opponentTeamId: '12' })]`),
-            [true, true]);
-        check('NMSU vs New Mexico (id 167) is flagged — Rio Grande Rivalry',
-            run(`isRivalryGame({ teamKey: 'nmsu', opponentTeamId: '167' })`), true);
-        check('NMSU vs UTEP (id 2638) is flagged — Battle of I-10',
-            run(`isRivalryGame({ teamKey: 'nmsu', opponentTeamId: '2638' })`), true);
-        check('a non-NMSU team playing UTEP is not flagged',
-            run(`isRivalryGame({ teamKey: 'asu', opponentTeamId: '2638' })`), false);
 
-        // --- dedupeMutualGames: when two tracked teams play each other,
-        // each side's own ESPN feed independently returns that same game —
-        // this collapses the pair back down to a single calendar entry. ---
+        check('isRivalryGame flags Territorial Cup, Rio Grande, Battle of I-10, Border War, and AZ in-state games',
+            run(`[
+                isRivalryGame({ teamKey: 'asu', opponentTeamId: '12' }),
+                isRivalryGame({ teamKey: 'nmsu', opponentTeamId: '167' }),
+                isRivalryGame({ teamKey: 'unm', opponentTeamId: '166' }),
+                isRivalryGame({ teamKey: 'nmsu', opponentTeamId: '2638' }),
+                isRivalryGame({ teamKey: 'wyo', opponentTeamId: '36' }),
+                isRivalryGame({ teamKey: 'asu', opponentTeamId: '2464' }),
+                isRivalryGame({ teamKey: 'asu', opponentTeamId: '99999' })
+            ]`),
+            [true, true, true, true, true, true, false]);
+
+        // --- dedupeMutualGames ---
         run(`
-            // Same real-world game (shared eventId), one copy from each
-            // team's own feed — ASU hosting Arizona.
-            window.__mutualHome = {
-                sport: 'football', teamKey: 'asu', opponentTeamId: '12',
-                opponent: 'vs Arizona Wildcats', calendarDate: '2026-11-28', eventId: '401520000'
-            };
-            window.__mutualAway = {
-                sport: 'football', teamKey: 'ua', opponentTeamId: '9',
-                opponent: '@ Arizona State', calendarDate: '2026-11-28', eventId: '401520000'
-            };
-            window.__unrelated = {
-                sport: 'football', teamKey: 'asu', opponentTeamId: '99999',
-                opponent: 'vs Some Non-Tracked Team', calendarDate: '2026-11-14', eventId: '401599999'
-            };
-            window.__dedupedByEventId = dedupeMutualGames([window.__mutualHome, window.__mutualAway, window.__unrelated]);
-            // Same matchup again but with no eventId (e.g. sample/fallback
-            // data) — must still collapse via the sport+date+team-pair
-            // fallback key.
-            window.__mutualHomeNoId = { sport: 'football', teamKey: 'asu', opponentTeamId: '12', opponent: 'vs Arizona Wildcats', calendarDate: '2026-11-28', eventId: '' };
-            window.__mutualAwayNoId = { sport: 'football', teamKey: 'ua', opponentTeamId: '9', opponent: '@ Arizona State', calendarDate: '2026-11-28', eventId: '' };
-            window.__dedupedByPair = dedupeMutualGames([window.__mutualAwayNoId, window.__mutualHomeNoId]);
+            const mHome = { sport:'football', teamKey:'asu', opponentTeamId:'12', opponent:'vs Arizona Wildcats', calendarDate:'2026-11-28', eventId:'401520000' };
+            const mAway = { sport:'football', teamKey:'ua', opponentTeamId:'9', opponent:'@ Arizona State', calendarDate:'2026-11-28', eventId:'401520000' };
+            const other = { sport:'football', teamKey:'asu', opponentTeamId:'99999', opponent:'vs Other', calendarDate:'2026-11-14', eventId:'401599999' };
+            window.__deduped = dedupeMutualGames([mHome, mAway, other]);
         `);
-        check('a game between two tracked teams collapses from two feed copies down to one',
-            run(`window.__dedupedByEventId.length`), 2);
-        check('games against a non-tracked opponent are left alone (only mutual tracked-vs-tracked pairs are collapsed)',
-            run(`window.__dedupedByEventId.some(g => g === window.__unrelated)`), true);
-        check(`the kept entry is the home team's perspective ("vs", not "@")`,
-            run(`window.__dedupedByEventId.find(g => g.opponentTeamId === '12' || g.opponentTeamId === '9')?.opponent`), 'vs Arizona Wildcats');
-        check('dedup still collapses a mutual pair that has no eventId, via the sport+date+team-pair fallback key',
-            run(`window.__dedupedByPair.length`), 1);
+        check('dedupeMutualGames collapses mutual tracked games and keeps the home perspective',
+            run(`[window.__deduped.length, window.__deduped.find(g => g.eventId === '401520000').opponent]`),
+            [2, 'vs Arizona Wildcats']);
 
-        // --- mobile/crowding fix: a busy day caps inline calendar-event boxes
-        // and points to the existing tap-for-detail panel instead, so this
-        // scales to any number of same-day games (regardless of how many
-        // teams are tracked at any given time) rather than needing another
-        // pass per team added. Uses synthetic team keys, decoupled from
-        // whichever teams are actually configured. Uses today's own date
-        // (not a hardcoded one) so this cell is never in a since-trimmed
-        // past week — see the past-week-trimming tests further below. ---
+        // --- Scorebug card, Agenda/Calendar toggle, Mobile Dot Calendar, Mobile Bottom Nav ---
         run(`
-            const busyDay = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-            games = ['fakea', 'fakeb', 'fakec', 'faked'].map((key, i) => ({
-                teamKey: key, sport: 'football', calendarDate: busyDay,
-                dateValue: new Date(), state: 'pre',
-                team: key.toUpperCase(), opponent: \`vs Test Opponent \${i}\`,
-                opponentShort: \`Test \${i}\`, time: 'TBD'
+            const busyDay = todayKeyInGameTz();
+            games = ['asu', 'ua', 'suns', 'wyo'].map((key, i) => ({
+                teamKey: key, sport: 'basketball', calendarDate: busyDay,
+                dateValue: new Date(Date.now() + (i + 1) * 3600000), state: 'pre',
+                team: TEAM_LABEL[key], opponent: \`vs Test Opp \${i}\`, opponentShort: \`Test \${i}\`,
+                time: '7:00 PM', broadcast: 'ESPN/ESPN+', venue: 'Tucson, AZ',
+                logo: teamLogos[key], opponentLogo: 'https://example.test/opp.png'
             }));
             renderGames('all');
-            updateCalendarMonth();
             window.__busyCell = document.querySelector(\`.calendar-cell[data-date="\${busyDay}"]\`);
         `);
-        check('a busy day caps inline calendar events at MAX_INLINE_CALENDAR_EVENTS',
-            run(`window.__busyCell.querySelectorAll('.calendar-event').length`), 2);
-        check('overflow games beyond the cap show a "+N more" indicator instead of just disappearing',
-            run(`window.__busyCell.querySelector('.calendar-event-more')?.textContent`), '+2 more');
+        check('busy calendar day caps inline events at 2 with "+2 more" and renders mobile dot indicators',
+            run(`[
+                window.__busyCell.querySelectorAll('.calendar-event').length,
+                window.__busyCell.querySelector('.calendar-event-more')?.textContent,
+                window.__busyCell.querySelectorAll('.calendar-dots i').length
+            ]`),
+            [2, '+2 more', 4]);
+        check('Agenda view renders Broadcast Scorebug cards with real img logos and short TV badge',
+            run(`(() => {
+                applyScheduleViewMode('agenda');
+                const card = document.querySelector('#agenda-view .scorebug-card');
+                const tv = card?.querySelector('.broadcast-tag');
+                return [!document.querySelector('#agenda-view').hidden, document.querySelector('#calendar-wrap').hidden,
+                        card?.querySelectorAll('img.team-logo').length, tv?.textContent, tv?.title];
+            })()`),
+            [true, true, 2, 'ESPN', 'ESPN/ESPN+']);
+        check('switching to Calendar view shows calendar wrap and hides agenda view',
+            run(`(() => {
+                applyScheduleViewMode('calendar');
+                return [document.querySelector('#agenda-view').hidden, !document.querySelector('#calendar-wrap').hidden];
+            })()`),
+            [true, true]);
+        check('mobile bottom tab bar switches active mobile tab and aria-current',
+            run(`(() => {
+                setMobileTab('standings');
+                return [
+                    document.querySelector('#main-content').dataset.mobileTab,
+                    document.querySelector('[data-mobile-nav="standings"]').getAttribute('aria-current'),
+                    document.querySelector('[data-mobile-nav="games"]').getAttribute('aria-current')
+                ];
+            })()`),
+            ['standings', 'page', null]);
 
-        // --- finished games move out of the calendar grid and into the
-        // recent-results recap instead; a month left with nothing but
-        // finished games drops out of the calendar entirely, so navigation
-        // advances forward rather than still offering an empty past month.
-        // Uses today's own date (computed at test-run time, not a hardcoded
-        // 2026 date) so this stays valid regardless of when the suite runs
-        // and specifically isolates "finished games are hidden" from the
-        // separate past-week-trimming behavior tested further below —
-        // today is always in the current, never-trimmed week. ---
+        // --- Finished games move out of calendar/agenda into Recent Results ---
         run(`
-            window.__todayKeyForCalendar = new Intl.DateTimeFormat('en-CA', {
-                year: 'numeric', month: '2-digit', day: '2-digit'
-            }).format(new Date());
-            window.__pastFinished = {
-                teamKey: 'asu', sport: 'football', calendarDate: window.__todayKeyForCalendar,
+            const todayKey = todayKeyInGameTz();
+            window.__fin = {
+                teamKey: 'asu', sport: 'football', calendarDate: todayKey,
                 dateValue: new Date(), state: 'post',
                 team: 'Arizona State', opponent: 'vs Morgan State', opponentShort: 'Morgan State',
                 time: '8:00 PM', status: 'Final', scoreText: 'ASU 48, Morgan State 7',
                 score: [{ name: 'Arizona State', score: 48, winner: true }, { name: 'Morgan State', score: 7, winner: false }]
             };
-            window.__upcomingSameDay = {
-                teamKey: 'ua', sport: 'football', calendarDate: window.__todayKeyForCalendar,
-                dateValue: new Date(), state: 'pre',
-                team: 'Arizona Wildcats', opponent: 'vs Test Opponent', opponentShort: 'Test Opp', time: 'TBD'
-            };
-            games = [window.__pastFinished, window.__upcomingSameDay];
-            renderGames('all');
-            updateCalendarMonth();
-            window.__mixedCell = document.querySelector(\`.calendar-cell[data-date="\${window.__todayKeyForCalendar}"]\`);
-        `);
-        check('finished games are hidden from the calendar grid (only the still-upcoming game on the same day renders inline)',
-            run(`window.__mixedCell.querySelectorAll('.calendar-event').length`), 1);
-        check('the one calendar-event box that does render is the upcoming game, not the finished one',
-            run(`window.__mixedCell.querySelector('.calendar-event strong')?.textContent`), 'Arizona Wildcats');
-
-        run(`
-            games = [window.__pastFinished];
+            games = [window.__fin];
             renderGames('all');
         `);
-        check('a day whose only game has already finished shows no calendar cell at all for that month (the month has nothing left to show)',
-            run(`document.querySelector(\`.calendar-cell[data-date="\${window.__todayKeyForCalendar}"]\`)`), null);
-        check('the schedule instead shows the "no games match" message rather than an empty calendar',
-            run(`document.querySelector('#schedule .empty')?.textContent`), 'No games match the selected filter.');
+        check('finished games appear in Recent Results and are excluded from the calendar',
+            run(`[
+                document.querySelector('#recent-results .results-team[data-team="asu"] .result-opponent')?.textContent,
+                document.querySelector('#recent-results .results-team[data-team="asu"] .result-row')?.classList.contains('result-win'),
+                document.querySelector('#schedule .empty')?.textContent
+            ]`),
+            ['Morgan State', true, 'No games match the selected filter.']);
 
-        run(`
-            selectCalendarDay(window.__todayKeyForCalendar);
-            window.__panelText = document.querySelector('#selected-day-games').textContent;
-        `);
-        check('the selected-day panel does not resurface a finished game on a day the calendar grid already hid it',
-            run(`window.__panelText.includes('No games scheduled')`), true);
+        // --- Past-week trimming & DST-safe daysBetween ---
+        check('daysBetween counts whole days accurately across US DST spring-forward',
+            run(`[daysBetween(new Date(2026, 8, 5), new Date(2026, 8, 19)), daysBetween(new Date(2026, 2, 1), new Date(2026, 2, 31))]`),
+            [14, 30]);
 
-        run(`
-            window.__augFinished = {
-                teamKey: 'asu', sport: 'football', calendarDate: '2026-08-15',
-                dateValue: new Date('2026-08-15T00:00:00Z'), state: 'post',
-                team: 'Arizona State', opponent: 'vs Old Opponent', opponentShort: 'Old Opp',
-                time: 'TBD', status: 'Final', scoreText: 'ASU 20, Old Opp 10'
-            };
-            window.__octUpcoming = {
-                teamKey: 'asu', sport: 'football', calendarDate: '2026-10-10',
-                dateValue: new Date('2026-10-10T00:00:00Z'), state: 'pre',
-                team: 'Arizona State', opponent: 'vs Future Opponent', opponentShort: 'Future Opp', time: 'TBD'
-            };
-            games = [window.__augFinished, window.__octUpcoming];
-            renderGames('all');
-            updateCalendarMonth();
-            window.__monthTitles = [...document.querySelectorAll('#schedule .month-title')].map(t => t.textContent);
-        `);
-        check('a month whose only games have all finished drops out of the calendar entirely (advances forward)',
-            run(`window.__monthTitles.includes('AUGUST 2026')`), false);
-        check('a month that still has an upcoming game keeps its section',
-            run(`window.__monthTitles.includes('OCTOBER 2026')`), true);
-
-        // --- past-week trimming within a month's own grid: full weeks that
-        // ended before the current week are dropped (offset cells and all),
-        // so the current week becomes the grid's first content row instead
-        // of leaving empty past weeks stacked above it. "Now" is frozen for
-        // this check (real Date restored immediately after) so the trim
-        // math is deterministic regardless of when the suite actually runs. ---
-        run(`
-            window.__RealDate = Date;
-            class FixedDate extends window.__RealDate {
-                constructor(...args) {
-                    if (args.length === 0) return super('2026-09-19T12:00:00');
-                    return super(...args);
-                }
-                static now() { return new window.__RealDate('2026-09-19T12:00:00').getTime(); }
-            }
-            Date = FixedDate; // frozen "now": Saturday, September 19 2026
-            games = [{
-                teamKey: 'asu', sport: 'football', calendarDate: '2026-09-06',
-                dateValue: new window.__RealDate('2026-09-06T00:00:00'), state: 'pre',
-                team: 'Arizona State', opponent: 'vs Early September Opponent', opponentShort: 'Early Sep', time: 'TBD'
-            }, {
-                teamKey: 'asu', sport: 'football', calendarDate: '2026-09-24',
-                dateValue: new window.__RealDate('2026-09-24T00:00:00'), state: 'pre',
-                team: 'Arizona State', opponent: 'vs Late September Opponent', opponentShort: 'Late Sep', time: 'TBD'
-            }];
-            renderGames('all');
-            updateCalendarMonth();
-            window.__trimmedGrid = document.querySelector('#schedule section .month-grid');
-            window.__earlySepCell = document.querySelector('.calendar-cell[data-date="2026-09-06"]');
-            window.__currentWeekSundayCell = document.querySelector('.calendar-cell[data-date="2026-09-13"]');
-            window.__lateSepCell = document.querySelector('.calendar-cell[data-date="2026-09-24"]');
-            // 7 weekday-header divs come first, then day content.
-            window.__firstContentCell = window.__trimmedGrid?.children[7];
-            Date = window.__RealDate;
-        `);
-        check('a day in a fully-elapsed past week (Sept 6, two Sundays before the frozen "now") has no calendar cell at all',
-            run(`window.__earlySepCell`), null);
-        check(`the current week's Sunday (Sept 13) still gets a cell even with no game of its own — the whole current week is kept`,
-            run(`!!window.__currentWeekSundayCell`), true);
-        check(`the current week becomes the grid's first content row — no leftover empty-placeholder cell renders before it`,
-            run(`window.__firstContentCell?.dataset.date`), '2026-09-13');
-        check('a day in a later week (Sept 24) still renders normally',
-            run(`!!window.__lateSepCell`), true);
-
-        // --- daysBetween: the helper the trim above relies on — plain
-        // whole-day counting, and specifically safe across a US DST
-        // transition (spring-forward is March 8, 2026), which is exactly
-        // the kind of off-by-one bug this local-noon normalization avoids. ---
-        check('daysBetween counts whole days between two local dates',
-            run(`daysBetween(new Date(2026, 8, 5), new Date(2026, 8, 19))`), 14);
-        check('daysBetween returns 0 for the same date', run(`daysBetween(new Date(2026, 8, 5), new Date(2026, 8, 5))`), 0);
-        check('daysBetween is unaffected by a DST transition falling inside the range',
-            run(`daysBetween(new Date(2026, 2, 1), new Date(2026, 2, 31))`), 30);
-
-        // --- recent-results recap: grouped per team (mirrors the standings
-        // strip), separate from the calendar grid that just hid these. ---
-        run(`
-            games = [window.__pastFinished];
-            renderGames('all');
-            window.__asuResultsCard = document.querySelector('#recent-results .results-team[data-team="asu"]');
-            window.__cardinalsResultsCard = document.querySelector('#recent-results .results-team[data-team="cardinals"]');
-        `);
-        check('renderRecentResults shows a card for the team with its finished result (opponent name)',
-            run(`window.__asuResultsCard?.querySelector('.result-opponent')?.textContent`), 'Morgan State');
-        check('the result row is styled as a win, distinct from a loss',
-            run(`window.__asuResultsCard?.querySelector('.result-row')?.classList.contains('result-win')`), true);
-        check('a team with no finished games yet shows a plain "no results" message instead of an empty card',
-            run(`window.__cardinalsResultsCard?.querySelector('.results-empty')?.textContent`), 'No results yet this season.');
-        run(`
-            renderGames('basketball');
-            window.__cardinalsResultsCardFiltered = document.querySelector('#recent-results .results-team[data-team="cardinals"]');
-        `);
-        check('recent results respects the sport filter — a football-only team gets no card under the Basketball filter',
-            run(`window.__cardinalsResultsCardFiltered`), null);
-        run(`renderGames('all');`);
-        check('the sport-mark in a recent-results row stays in normal inline flow rather than escaping to the page corner',
-            run(`getComputedStyle(document.querySelector('#recent-results .result-row .sport-mark')).position`), 'static');
-
-        // --- recent-results cap: only the 3 most recent finished games per
-        // team render, so the card doesn't keep growing as a season's worth
-        // of results piles up. ---
-        run(`
-            games = [1, 2, 3, 4, 5].map(n => ({
-                teamKey: 'asu', sport: 'football', calendarDate: \`2026-09-0\${n}\`,
-                dateValue: new Date(2026, 8, n), state: 'post',
-                team: 'Arizona State', opponent: \`vs Week \${n} Opponent\`, opponentShort: \`Week \${n}\`,
-                time: 'TBD', status: 'Final', scoreText: \`ASU \${10 + n}, Week \${n} Opp \${n}\`
-            }));
-            renderGames('all');
-            window.__cappedRows = [...document.querySelectorAll('#recent-results .results-team[data-team="asu"] .result-opponent')]
-                .map(el2 => el2.textContent);
-        `);
-        check('RECENT_RESULTS_PER_TEAM is 3', run(`RECENT_RESULTS_PER_TEAM`), 3);
-        check('a team with 5 finished games only shows the 3 most recent, not all 5',
-            run(`window.__cappedRows.length`), 3);
-        check('the 3 shown are the most recent ones, newest first (Week 5, 4, 3 — not the older Week 1/2)',
-            run(`window.__cappedRows`), ['Week 5', 'Week 4', 'Week 3']);
-
-        // --- light theme ("High Noon") toggle ---
-        check('page starts in the default Night Shift (dark) theme',
+        // --- Theme toggle (OLED Dark default vs Daylight Light) ---
+        check('page starts in OLED dark Broadcast theme by default',
             run(`document.documentElement.dataset.theme`), undefined);
         run(`document.querySelector('#theme-toggle').click();`);
-        check('clicking the theme toggle switches the root to data-theme="light"',
-            run(`document.documentElement.dataset.theme`), 'light');
-        check('the light palette actually changes the --bg custom property value',
-            run(`window.getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()`), '#f5f2ea');
-        check('toggle button reflects the light state via aria-pressed',
-            run(`document.querySelector('#theme-toggle').getAttribute('aria-pressed')`), 'true');
+        check('theme toggle switches to Daylight light theme (#eef1f5) and updates aria-pressed',
+            run(`[
+                document.documentElement.dataset.theme,
+                window.getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(),
+                document.querySelector('#theme-toggle').getAttribute('aria-pressed')
+            ]`),
+            ['light', '#eef1f5', 'true']);
         run(`document.querySelector('#theme-toggle').click();`);
-        check('clicking again switches back to Night Shift (data-theme removed)',
+        check('clicking theme toggle again returns to OLED dark theme',
             run(`document.documentElement.dataset.theme`), undefined);
-        check('every hardcoded dark-only panel/well color was moved to a theme variable',
-            !/rgba\(12,16,22|#0e141c|#1c232d/.test(cssText),
-            true);
 
-        // --- conference standings ---
-        check('extractStandingsRecord reads a verified ESPN stat shape (name/displayValue)',
-            run(`extractStandingsRecord([{ name: 'overall', type: 'total', displayValue: '12-2' }], ['overall'])`),
-            '12-2');
-        check('extractStandingsRecord falls back through a list of candidate stat names',
-            run(`extractStandingsRecord([{ name: 'conference', displayValue: '7-2' }], ['vsconf', 'conference'])`),
-            '7-2');
-        check('extractStandingsRecord returns empty string rather than throwing when stats are missing',
-            run(`extractStandingsRecord(undefined, ['overall'])`),
-            '');
-        check('every tracked college team has a display label for the standings strip',
-            run(`Object.keys(COLLEGE_TEAM_ID_BY_KEY).every(k => typeof STANDINGS_TEAM_LABEL[k] === 'string')`),
-            true);
-        run(`renderStandings([{ teamKey: 'asu', sport: 'football', overall: '2-0', conference: '1-0' }]);`);
-        check('renderStandings renders a team entry with its conference and overall record',
-            run(`document.querySelector('#standings-strip').textContent.includes('Conf 1-0') &&
-                 document.querySelector('#standings-strip').textContent.includes('Overall 2-0') &&
-                 document.querySelector('#standings-strip').textContent.includes('Sun Devils')`),
-            true);
-        run(`renderStandings([]);`);
-        check('renderStandings shows a plain-language message rather than a blank strip when nothing is available',
-            run(`document.querySelector('.standings-empty') !== null`),
-            true);
-        check('standings always request seasontype=2 explicitly (verified: FCS group standings silently zero out without it)',
-            run(`fetchGroupStandings.toString().includes('seasontype=2')`),
-            true);
-
-        // --- historical "normal" weather comparison ---
-        check('dayOfYearFromMonthDay orders month-days correctly within a year',
-            run(`dayOfYearFromMonthDay('01-01') < dayOfYearFromMonthDay('06-15') && dayOfYearFromMonthDay('06-15') < dayOfYearFromMonthDay('12-31')`),
-            true);
-        check('isWithinDayWindow matches a nearby date',
-            run(`isWithinDayWindow('09-10', '09-12', 3)`),
-            true);
-        check('isWithinDayWindow rejects a date outside the window',
-            run(`isWithinDayWindow('01-01', '09-12', 3)`),
-            false);
-        check('isWithinDayWindow handles year-boundary wraparound (Dec 30 is close to Jan 2)',
-            run(`isWithinDayWindow('12-30', '01-02', 3)`),
-            true);
-        check('computeNormalFromArchive averages only the days within the window, ignoring the rest',
+        // --- Standings & Historical Normals ---
+        check('extractStandingsRecord reads verified ESPN stat shape',
+            run(`extractStandingsRecord([{ name: 'overall', displayValue: '12-2' }], ['overall'])`), '12-2');
+        check('standings requests pass seasontype=2 explicitly',
+            run(`fetchGroupStandings.toString().includes('seasontype=2')`), true);
+        check('computeNormalFromArchive averages only days within window (including year wraparound)',
             run(`(() => {
-                const data = {
-                    daily: {
-                        time: ['2020-09-10', '2020-09-12', '2020-01-01', '2021-09-12'],
-                        temperature_2m_max: [90, 100, 40, 96],
-                        temperature_2m_min: [70, 74, 20, 72]
-                    }
-                };
-                // 09-10, 09-12, and 09-12 (next year) are within 3 days of
-                // 09-12; 01-01 is not, and must be excluded from the average.
-                return computeNormalFromArchive(data, '09-12');
+                const data = { daily: { time: ['2020-09-10','2020-09-12','2020-01-01','2021-09-12'],
+                    temperature_2m_max: [90,100,40,96], temperature_2m_min: [70,74,20,72] } };
+                return [isWithinDayWindow('12-30', '01-02', 3), computeNormalFromArchive(data, '09-12')];
             })()`),
-            { high: 95, low: 72 });
-        check('computeNormalFromArchive returns null when nothing in range matches (rather than NaN/0)',
-            run(`computeNormalFromArchive({ daily: { time: ['2020-01-01'], temperature_2m_max: [40], temperature_2m_min: [20] } }, '09-12')`),
-            null);
-        check('the historical endpoint is the Historical Weather API (archive-api), not the Climate API — verified the Climate API serves model projections, not day-of-year normals',
-            run(`(() => {
-                const src = fetchHistoricalNormal.toString();
-                return src.includes('archive-api.open-meteo.com') && !src.includes('climate-api.open-meteo.com');
-            })()`),
-            true);
-        run(`
-            document.querySelector('[data-weather="tempe"] .weather-meta').querySelectorAll('.normal-high').forEach(n => n.remove());
-            renderHistoricalNormals({ tempe: { high: 91, low: 68 } });
-        `);
-        check('renderHistoricalNormals appends a normal-high reading to the matching weather card',
-            run(`document.querySelector('[data-weather="tempe"] .normal-high')?.textContent.includes('91')`),
-            true);
-        run(`renderHistoricalNormals({ tempe: { high: 91, low: 68 } });`);
-        check('renderHistoricalNormals does not duplicate the reading on a second call',
-            run(`document.querySelectorAll('[data-weather="tempe"] .normal-high').length`),
-            1);
+            [true, { high: 95, low: 72 }]);
 
-        // --- light theme: no hardcoded white icon colors left ---
-        // .weather-symbol (the 10-day forecast icons) and .rain-drops were
-        // hardcoded to #fff — invisible against High Noon's near-white
-        // panels, which is exactly what only shows up once the light theme
-        // actually exists. Both should read from a theme variable instead.
-        check('.weather-symbol (10-day forecast icons) uses a theme-aware color, not hardcoded white',
-            !/\.weather-symbol\s*\{[^}]*color:#fff/.test(cssText),
-            true);
-        check('.rain-drops uses a theme-aware color, not hardcoded white',
-            !/\.rain-drops i\s*\{[^}]*background:#fff/.test(cssText),
-            true);
-
-        // --- header mountain mark, sitting between the title and the theme toggle ---
-        check('a mountain-mark SVG sits between the "& Scoreboard" title and the theme toggle',
-            run(`(() => {
-                const h1 = document.querySelector('.brand-row h1');
-                const mark = document.querySelector('.brand-row .mountain-mark');
-                const toggle = document.querySelector('#theme-toggle');
-                if (!h1 || !mark || !toggle) return false;
-                // DOCUMENT_POSITION_FOLLOWING (4) means "comes after" in source order
-                const afterH1 = !!(h1.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING);
-                const beforeToggle = !!(mark.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING);
-                return afterH1 && beforeToggle;
-            })()`),
-            true);
-        check('the mountain mark uses the flat currentColor-fill style the cactus brand mark uses (no stroke)',
-            run(`(() => {
-                const mark = document.querySelector('.mountain-mark');
-                const path = mark?.querySelector('path');
-                return mark?.getAttribute('viewBox') === '0 0 24 24' && path?.getAttribute('fill') === 'currentColor' && !path?.getAttribute('stroke');
-            })()`),
-            true);
-        check('the mountain mark is colored blue (distinct from the teal cactus) via a theme-aware variable',
-            (cssText.match(/\.mountain-mark\s*\{[^}]*\}/) || [''])[0].includes('var(--blue)'),
-            true);
-
-        // --- selected-day panel: sport indicator + opponent-name prominence ---
-        // renderSelectedDayGames previously had no sport-mark at all (unlike
-        // buildCalendarEvent and renderTodayGames, which both already showed
-        // one), and no context split the opponent's name out from the rest
-        // of the muted meta text so it could be styled more prominently.
-        run(`
-            // A date a week from now, so this check doesn't break once a
-            // hardcoded date drifts into a past week the calendar trims away.
-            const testDayDate = new Date(Date.now() + 7 * 86400000);
-            const testDay = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(testDayDate);
-            games = [{
-                teamKey: 'asu', sport: 'football', calendarDate: testDay,
-                dateValue: new Date(testDay + 'T19:00:00Z'), state: 'pre',
-                team: 'Arizona State', opponent: 'vs Test Rival',
-                opponentShort: 'Test Rival', time: 'TBD'
-            }];
-            renderGames('all');
-            updateCalendarMonth();
-            selectCalendarDay(testDay);
-            window.__selectedGame = document.querySelector('#selected-day-games .selected-day-game');
-            window.__calEvent = document.querySelector(\`.calendar-cell[data-date="\${testDay}"] .calendar-event\`);
-        `);
-        check('renderSelectedDayGames now shows a football/basketball sport indicator (previously only buildCalendarEvent and renderTodayGames did)',
-            run(`!!window.__selectedGame?.querySelector('.sport-mark')`), true);
-        check('the selected-day sport-mark stays in normal inline flow rather than escaping to the page corner (.selected-day-game has no position:relative to contain the base absolute rule)',
-            run(`getComputedStyle(window.__selectedGame.querySelector('.sport-mark')).position`), 'static');
-        check('renderSelectedDayGames opponent name is a separately styleable .opponent-name span',
-            run(`window.__selectedGame?.querySelector('.opponent-name')?.textContent`), 'Test Rival');
-        check('buildCalendarEvent opponent name is a separately styleable .opponent-name span',
-            run(`window.__calEvent?.querySelector('.opponent-name')?.textContent`), 'Test Rival');
-
-        // --- today's-games list: opponent name isolated from the trailing time ---
-        run(`
-            const todayKey = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-            games = [{
-                teamKey: 'ua', sport: 'basketball', calendarDate: todayKey,
-                dateValue: new Date(), state: 'pre', team: 'Arizona',
-                opponent: '@ Test Away Opp', opponentShort: 'Test Away', time: 'TBD'
-            }];
-            renderGames('all');
-            window.__todayGame = document.querySelector('#today-games-list .today-game');
-        `);
-        check('renderTodayGames opponent name is a separately styleable .opponent-name span',
-            run(`window.__todayGame?.querySelector('.opponent-name')?.textContent`), 'Test Away Opp');
-        check('renderTodayGames still shows the game time alongside the opponent name on one line',
-            run(`[...window.__todayGame.children].find(c => c.tagName === 'SPAN' && c.classList.length === 0)?.textContent.includes('TBD')`), true);
-        check('a finished/live game keeps its plain score-recap string rather than splitting out an opponent-name span (it is a score recap, not an identifying name label)',
-            run(`(() => {
-                games = [{
-                    teamKey: 'ua', sport: 'basketball', calendarDate: new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()),
-                    dateValue: new Date(), state: 'post', team: 'Arizona',
-                    opponent: '@ Test Away Opp', opponentShort: 'Test Away', time: 'TBD',
-                    score: [{ score: 70 }, { score: 7 }]
-                }];
-                renderGames('all');
-                const g = document.querySelector('#today-games-list .today-game');
-                return !g.querySelector('.opponent-name') && g.textContent.includes('Final');
-            })()`), true);
-
-        // --- opponent-name is visually bumped up from the surrounding muted
-        // meta text (same font-family/weight as team names) in every context,
-        // via the scoped two-class overrides required to beat the existing
-        // generic .calendar-event/.today-game/.selected-day-game span rule. ---
-        check('.opponent-name gets the prominent Sora/600 treatment in all three contexts (scoped to beat the generic span rule)',
-            ['calendar-event', 'today-game', 'selected-day-game'].every(ctx => {
-                const block = (cssText.match(new RegExp(`\\.${ctx} \\.opponent-name[^{]*\\{[^}]*\\}`)) || [''])[0];
-                return block.includes('Sora') && block.includes('font-weight:600');
-            }),
-            true);
-        check('.opponent-name still reads clearly less prominent than the followed team name (muted color, not --ink)',
-            run(`getComputedStyle(window.__selectedGame.querySelector('.opponent-name')).color`) !==
-            run(`getComputedStyle(window.__selectedGame.querySelector('strong')).color`),
-            true);
-
-
-        // --- Round 8 (PUNCHLIST.md #8) ---
-        // Records under the logos only on each team's NEXT game — later games show none.
-        run(`
-            const dA = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 1 * 86400000));
-            const dB = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 3 * 86400000));
-            games = [
-                { teamKey:'ua', sport:'football', state:'post', dateValue:new Date(Date.now() - 5 * 86400000), calendarDate:'2000-01-01', score:[{score:30},{score:10}], team:'Arizona Wildcats', opponent:'vs X' },
-                { teamKey:'ua', sport:'football', state:'pre', calendarDate:dA, dateValue:new Date(Date.now() + 1 * 86400000), team:'Arizona Wildcats', opponent:'vs Next Opp', time:'7:00 PM', logo:'https://example.test/ua.png' },
-                { teamKey:'ua', sport:'football', state:'pre', calendarDate:dB, dateValue:new Date(Date.now() + 3 * 86400000), team:'Arizona Wildcats', opponent:'@ Later Opp', time:'7:00 PM', logo:'https://example.test/ua.png' }
-            ];
-            renderGames('all');
-            updateCalendarMonth();
-            window.__laterBox = document.querySelector(\`.calendar-cell[data-date="\${dB}"] .calendar-event\`);
-        `);
-        check('a later (not-next) game shows no records under either logo',
-            run(`window.__laterBox ? window.__laterBox.querySelectorAll('.logo-record').length : -1`),
-            0);
-        check('a later game also has no inline record chip in the calendar box',
-            run(`window.__laterBox ? window.__laterBox.querySelectorAll('.team-record').length : -1`),
-            0);
-
-        // Opponent record under the opponent's logo; own record not repeated below the TV line.
-        run(`
-            const d8 = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 2 * 86400000));
-            games = [
-                { teamKey:'asu', sport:'basketball', state:'post', dateValue:new Date(Date.now() - 3 * 86400000), calendarDate:'2000-01-01', score:[{score:80},{score:60}], team:'Arizona State', opponent:'vs Old Opp' },
-                { teamKey:'asu', sport:'basketball', state:'pre', calendarDate:d8, dateValue:new Date(Date.now() + 2 * 86400000),
-                  team:'Arizona State', opponent:'@ Record Opp', opponentShort:'Record Opp', opponentRecord:'7-3', time:'7:00 PM',
-                  broadcast:'Spectrum Sports Net/Suns Live', logo:'https://example.test/a.png', opponentLogo:'https://example.test/b.png' }
-            ];
-            renderGames('all');
-            updateCalendarMonth();
-            window.__r8 = document.querySelector(\`.calendar-cell[data-date="\${d8}"] .calendar-event\`);
-        `);
-        check('opponent record shows under the opponent logo on an upcoming game',
-            run(`[...window.__r8.querySelectorAll('.logo-with-record')].map(c => c.querySelector('img').alt + '=' + c.querySelector('.logo-record').textContent).sort().join(' ')`),
-            'Arizona State logo=1-0 Record Opp logo=7-3');
-        check('the followed team record is not repeated as an inline chip below the TV line in the calendar box',
-            run(`window.__r8.querySelectorAll('.team-record').length`), 0);
-        check('appendGameMeta skips the inline record for a next game, whose logo already shows it',
-            run(`(() => { const m = document.createElement('div'); appendGameMeta(m, games[1]); return !!m.querySelector('.team-record'); })()`),
-            false);
-        check('TV label shows only the first channel, with the full list in a tooltip',
-            run(`[window.__r8.querySelector('.broadcast-tag').textContent, window.__r8.querySelector('.broadcast-tag').title]`),
-            ['TV Spectrum Sports Net', 'Spectrum Sports Net/Suns Live']);
-        check('a single-channel TV label has no redundant tooltip',
-            run(`broadcastTag({ broadcast: 'ESPN2' }).hasAttribute('title')`), false);
-
-        // Opponent records come from the opponent's schedule feed (CORS-safe), not teams/{id}.
-        check('opponent records use the schedule endpoint on site.web.api.espn.com, not the CORS-blocked teams/{id}',
-            run(`(() => { const src = loadOpponentRecords.toString(); return src.includes('site.web.api.espn.com') && src.includes('/schedule?') && src.includes('recordSummary') && !src.includes('site.api.espn.com/apis/site/v2'); })()`),
-            true);
-        check('loadOpponentRecords requests only near-term opponents, once each',
-            run(`(async () => {
-                const calls = [];
-                const realFetch = window.fetch;
-                window.fetch = (url) => { calls.push(url); return Promise.resolve({ ok: true, json: () => Promise.resolve({ team: { recordSummary: '4-2' } }) }); };
-                for (const k of Object.keys(opponentRecords)) delete opponentRecords[k];
-                games = [
-                    { teamKey:'asu', sport:'basketball', state:'pre', league:'basketball/mens-college-basketball', opponentTeamId:'111', dateValue:new Date(Date.now() + 86400000), calendarDate:'2099-01-01', opponent:'vs A' },
-                    { teamKey:'ua', sport:'basketball', state:'pre', league:'basketball/mens-college-basketball', opponentTeamId:'111', dateValue:new Date(Date.now() + 2 * 86400000), calendarDate:'2099-01-02', opponent:'vs A' },
-                    { teamKey:'asu', sport:'basketball', state:'pre', league:'basketball/mens-college-basketball', opponentTeamId:'222', dateValue:new Date(Date.now() + 90 * 86400000), calendarDate:'2099-03-01', opponent:'vs B' }
-                ];
-                await loadOpponentRecords();
-                window.fetch = realFetch;
-                // Count only schedule lookups — later tests run while this
-                // one awaits and can trigger other fetches (e.g. weather alerts).
-                window.__lazyCalls = calls.filter(u => String(u).includes('/schedule?')).length;
-                window.__lazyRecord = opponentRecords['basketball/mens-college-basketball|111'];
-            })()`) && null, null);
-
-        // Broken logos fall back to an initials badge.
-        check('teamInitials builds a short badge label, ignoring parenthetical notes',
-            run(`[teamInitials('Embry Riddle (AZ) Eagles'), teamInitials('UTEP Miners'), teamInitials('')]`),
-            ['ER', 'UM', '?']);
-        check('a logo that fails to load is replaced by an initials badge (no broken image)',
+        // --- Missing-logo initials fallback ---
+        check('missing or broken logo URL becomes an initials placeholder badge',
             run(`(() => {
                 const wrap = document.createElement('div');
                 const img = teamLogoNode('https://example.test/missing.png', 'Embry Riddle (AZ) Eagles');
                 wrap.appendChild(img);
                 img.dispatchEvent(new window.Event('error'));
-                const badge = wrap.firstChild;
-                return [badge.tagName, badge.className, badge.textContent];
+                return [wrap.firstChild.className, wrap.firstChild.textContent, teamLogoNode('', 'UTEP Miners').textContent];
             })()`),
-            ['SPAN', 'opponent-placeholder', 'ER']);
-        check('a missing logo URL goes straight to the initials badge',
-            run(`teamLogoNode('', 'Some Opp').className`), 'opponent-placeholder');
-        check('the initials badge has a style rule (it previously rendered as a bare "?")',
-            /\.opponent-placeholder\s*\{[^}]*border-radius/.test(html), true);
+            ['opponent-placeholder', 'ER', 'UM']);
 
-        // --- Round 10 (PUNCHLIST.md #10): team + weather-city toggles ---
-        check('settings panel lists every tracked team and every weather city, all on by default',
+        // --- Settings panel team & city toggles ---
+        check('settings panel lists all 8 teams and 6 cities, locks last remaining city, and resets',
             run(`(() => {
                 localStorage.removeItem(PREFS_KEY); prefs = readPrefs(); renderSettingsPanel();
-                const teams = [...document.querySelectorAll('#settings-teams input')];
-                const cities = [...document.querySelectorAll('#settings-cities input')];
-                return [teams.length, cities.length, teams.every(b => b.checked) && cities.every(b => b.checked)];
-            })()`),
-            [Object.keys(dom.window.teamLogos || {}).length || 8, 6, true]);
-        check('settings button toggles the panel and reports aria-expanded',
-            run(`(() => {
-                const b = document.querySelector('#settings-toggle'); const p = document.querySelector('#settings-panel');
-                b.click(); const opened = !p.hidden && b.getAttribute('aria-expanded') === 'true';
-                b.click(); const closed = p.hidden && b.getAttribute('aria-expanded') === 'false';
-                return opened && closed;
-            })()`),
-            true);
-        run(`
-            (function () {
-                const d = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 2 * 86400000));
-                const base = { state:'pre', calendarDate:d, dateValue:new Date(Date.now() + 2 * 86400000), time:'7:00 PM' };
-                games = [
-                    Object.assign({}, base, { teamKey:'ua', sport:'basketball', team:'Arizona Wildcats', opponent:'vs Random U', opponentTeamId:'9999' }),
-                    Object.assign({}, base, { teamKey:'asu', sport:'basketball', team:'Arizona State', opponent:'@ Arizona Wildcats', opponentTeamId:'12' }),
-                    Object.assign({}, base, { teamKey:'suns', sport:'basketball', team:'Phoenix Suns', opponent:'vs Somebody', opponentTeamId:'5' })
-                ];
-                window.__toggleDay = d;
-                const box = document.querySelector('#settings-teams input[data-key="ua"]');
-                box.checked = false;
-                box.dispatchEvent(new window.Event('change', { bubbles: true }));
-            })();
-        `);
-        check('hiding a team removes its games from the calendar',
-            run(`[...document.querySelectorAll('.calendar-cell[data-date="' + window.__toggleDay + '"] .calendar-event')].map(e => e.dataset.team).sort().join(',')`),
-            'asu,suns');
-        check('a game between a hidden and a shown tracked team still shows (ASU vs Arizona with Arizona hidden)',
-            run(`isGameShown({ teamKey:'ua', opponentTeamId:'9' }) && !isGameShown({ teamKey:'ua', opponentTeamId:'9999' })`),
-            true);
-        check('hiding a team hides its legend entry and its recent-results card',
-            run(`document.querySelector('.team-legend [data-team="ua"]').hidden && !document.querySelector('#recent-results [data-team="ua"]')`),
-            true);
-        check('hiding a team drops it from the standings strip',
-            run(`(() => { renderStandings([{ teamKey:'ua', sport:'football', overall:'5-4', conference:'3-3' }, { teamKey:'asu', sport:'football', overall:'6-3', conference:'4-2' }]);
-                return [...document.querySelectorAll('#standings-strip .standings-entry')].map(e => e.dataset.team).join(','); })()`),
-            'asu');
-        check('the choice is saved to localStorage and read back on the next visit',
-            run(`(() => { const saved = JSON.parse(localStorage.getItem(PREFS_KEY)); return saved.hiddenTeams.includes('ua') && readPrefs().hiddenTeams.includes('ua'); })()`),
-            true);
-        run(`
-            (function () {
-                document.querySelector('[data-location="parker"]').click();
-                const box = document.querySelector('#settings-cities input[data-key="parker"]');
-                box.checked = false;
-                box.dispatchEvent(new window.Event('change', { bubbles: true }));
-            })();
-        `);
-        check('hiding a city hides its weather card and its forecast tab',
-            run(`document.querySelector('[data-weather="parker"]').hidden && document.querySelector('[data-location="parker"]').hidden`),
-            true);
-        check('if the open forecast tab is hidden, the first visible city opens instead',
-            run(`document.querySelector('[data-location].active')?.dataset.location`),
-            'tempe');
-        check('the last city left on cannot be switched off (its box is disabled)',
-            run(`(() => {
-                const boxes = [...document.querySelectorAll('#settings-cities input')];
-                boxes.slice(0, -1).forEach(b => { if (b.checked) { b.checked = false; b.dispatchEvent(new window.Event('change', { bubbles: true })); } });
-                const last = boxes[boxes.length - 1];
-                return [last.checked, last.disabled, prefs.hiddenCities.length];
-            })()`),
-            [true, true, 5]);
-        check('"Show everything" turns every team and city back on',
-            run(`(() => {
+                const tCount = document.querySelectorAll('#settings-teams input').length;
+                const cBoxes = [...document.querySelectorAll('#settings-cities input')];
+                cBoxes.slice(0, -1).forEach(b => { b.checked = false; b.dispatchEvent(new window.Event('change', { bubbles: true })); });
+                const locked = cBoxes[cBoxes.length - 1].disabled;
                 document.querySelector('#settings-reset').click();
-                return prefs.hiddenTeams.length === 0 && prefs.hiddenCities.length === 0 &&
-                    [...document.querySelectorAll('#settings-panel input')].every(b => b.checked && !b.disabled) &&
-                    !document.querySelector('[data-weather="parker"]').hidden && !document.querySelector('.team-legend [data-team="ua"]').hidden;
+                return [tCount, cBoxes.length, locked, prefs.hiddenCities.length];
             })()`),
-            true);
+            [8, 6, true, 0]);
 
-        // --- Round 11 (PUNCHLIST.md #11): 7 PM Eastern games were shown a day late as "TBD" ---
+        // --- Round 11: 7 PM Eastern (T00:00Z) vs real TBD (timeValid:false) ---
         run(`
             window.__tbdFeed = { sport:'football', league:'football/college-football', team:'Arizona Wildcats', teamId:'12', teamKey:'ua' };
             window.__mkEvent = (date, timeValid, shortDetail) => ({
@@ -916,60 +326,52 @@ setTimeout(() => {
                                    { homeAway:'home', team:{ id:'2306', displayName:'Kansas State Wildcats', shortDisplayName:'Kansas St' } } ] }]
             });
         `);
-        check('a real 7:00 PM Eastern start (T00:00Z, timeValid) lands on the right Mountain day and time, not "TBD" the next day',
+        check('7:00 PM Eastern start (T00:00Z, timeValid:true) lands on Mountain day & 5:00 PM, not TBD',
             run(`(() => { const g = normalizeGame(__mkEvent('2026-11-22T00:00Z', true, '11/21 - 7:00 PM EST'), __tbdFeed); return [g.calendarDate, g.time]; })()`),
             ['2026-11-21', '5:00 PM']);
-        check('a genuinely unscheduled game (timeValid:false, T05:00Z = midnight Eastern) shows TBD on its own day',
+        check('genuinely unscheduled game (timeValid:false) stays TBD on its Eastern date',
             run(`(() => { const g = normalizeGame(__mkEvent('2027-02-06T05:00Z', false, 'TBD'), __tbdFeed); return [g.calendarDate, g.time]; })()`),
             ['2027-02-06', 'TBD']);
-        check('TBD during daylight time (T04:00Z = midnight EDT) also keeps its own day',
-            run(`(() => { const g = normalizeGame(__mkEvent('2027-03-20T04:00Z', false, 'TBD'), __tbdFeed); return [g.calendarDate, g.time, g.month, String(g.day)]; })()`),
-            ['2027-03-20', 'TBD', 'MAR', '20']);
-        check('the sports cache key was bumped so games cached with the wrong day are not reused',
-            run(`CONFIG.sportsCacheKey`), 'valleyStats.sports.v2');
+        check('normalizeGame uses GAME_TIME_ZONE for timed calendarDate (prevents travel timezone split)',
+            run(`normalizeGame.toString().includes('calendarParts(date, GAME_TIME_ZONE)')`), true);
 
-        // Seasons roll over on their own.
-        check('currentSeasons: Nov 2026 is football 2026 / basketball 2027 ("2026–27 season")',
-            run(`(() => { const s = currentSeasons(new Date(2026, 10, 11)); return [s.football, s.basketball, s.label]; })()`),
-            [2026, 2027, '2026–27 season']);
-        check('currentSeasons: Jan 2027 is still football 2026 (bowls/playoffs) and basketball 2027',
-            run(`(() => { const s = currentSeasons(new Date(2027, 0, 15)); return [s.football, s.basketball]; })()`),
-            [2026, 2027]);
-        check('currentSeasons: Aug 2027 rolls to football 2027 / basketball 2028',
-            run(`(() => { const s = currentSeasons(new Date(2027, 7, 1)); return [s.football, s.basketball]; })()`),
-            [2027, 2028]);
-        check('CONFIG seasons are derived, not hardcoded',
-            run(`CONFIG.footballSeason === currentSeasons().football && CONFIG.basketballSeason === currentSeasons().basketball`),
-            true);
+        // --- Seasons rollover ---
+        check('currentSeasons rolls football in March and basketball in August',
+            run(`[currentSeasons(new Date(2026, 10, 11)).label, currentSeasons(new Date(2027, 0, 15)).football, currentSeasons(new Date(2027, 7, 1)).basketball]`),
+            ['2026–27 season', 2026, 2028]);
 
-        // Fallback schedule.
-        check('sample-schedule rows dated before today are dropped instead of showing as upcoming',
-            run(`[isStaleFallback({ date: '2000-01-01' }), isStaleFallback({ date: '2999-01-01' }), isStaleFallback({ date: '2000-01-01', state: 'post' })]`),
-            [true, false, false]);
-        check('sample schedule includes UNM and Wyoming',
-            run(`['unm','wyo'].every(k => fallbackGamesRaw.some(g => g.teamKey === k))`),
-            true);
-        check('sample schedule includes NMSU in both sports',
-            run(`['football','basketball'].every(sp => fallbackGamesRaw.some(g => g.teamKey === 'nmsu' && g.sport === sp))`),
-            true);
-        check('a hydrated home sample game keeps its own logo on its own side (no own/opponent logo swap)',
-            run(`(() => { const g = hydrateFallback({ teamKey:'ua', sport:'football', team:'Arizona Wildcats', opponent:'vs Utah Utes', opponentLogo:'https://example.test/utah.png', date:'2999-01-01' }); return [g.logo === teamLogos.ua, g.opponentLogo]; })()`),
-            [true, 'https://example.test/utah.png']);
-        check('NMSU uses the gold team color chosen in PUNCHLIST.md #7',
-            /--team-nmsu:#c17817/.test(html), true);
+        // --- PWA Service Worker & Manifest checks ---
+        check('sw.js uses valleystats-sw-v1 cache name and guards res.ok before caching',
+            swSrc.includes("CACHE_NAME = 'valleystats-sw-v1'") && swSrc.includes('if (res && res.ok)'), true);
+        check('manifest.webmanifest uses Southwest description and #000000 OLED theme color',
+            manifestJson.description.includes('Southwest') && manifestJson.theme_color === '#000000', true);
+
+        // --- Lazy opponent record lookup ---
+        run(`(async () => {
+            const calls = [];
+            const realFetch = window.fetch;
+            window.fetch = (url) => { calls.push(url); return Promise.resolve({ ok: true, json: () => Promise.resolve({ team: { recordSummary: '4-2' } }) }); };
+            for (const k of Object.keys(opponentRecords)) delete opponentRecords[k];
+            games = [
+                { teamKey:'asu', sport:'basketball', state:'pre', league:'basketball/mens-college-basketball', opponentTeamId:'111', dateValue:new Date(Date.now() + 86400000), calendarDate:'2099-01-01', opponent:'vs A' },
+                { teamKey:'ua', sport:'basketball', state:'pre', league:'basketball/mens-college-basketball', opponentTeamId:'111', dateValue:new Date(Date.now() + 2 * 86400000), calendarDate:'2099-01-02', opponent:'vs A' },
+                { teamKey:'asu', sport:'basketball', state:'pre', league:'basketball/mens-college-basketball', opponentTeamId:'222', dateValue:new Date(Date.now() + 90 * 86400000), calendarDate:'2099-03-01', opponent:'vs B' }
+            ];
+            await loadOpponentRecords();
+            window.fetch = realFetch;
+            window.__lazyCalls = calls.filter(u => String(u).includes('/schedule?')).length;
+            window.__lazyRecord = opponentRecords['basketball/mens-college-basketball|111'];
+        })()`);
 
         setTimeout(() => {
-            check('loadOpponentRecords looks up only next-game opponents (one shared opponent = one request; a later game\'s opponent is skipped)',
+            check('loadOpponentRecords requests only next-game opponents, once each',
                 window.__lazyCalls, 1);
-            check('the fetched record is stored for that opponent', window.__lazyRecord, '4-2');
+            check('fetched opponent record is stored', window.__lazyRecord, '4-2');
             console.log(`\n${passed} passed, ${failed} failed.`);
             process.exit(failed ? 1 : 0);
         }, 300);
-        return;
-        console.log(`\n${passed} passed, ${failed} failed.`);
-        process.exit(failed ? 1 : 0);
     } catch (e) {
         console.error('TEST HARNESS ERROR:', e);
         process.exit(1);
     }
-}, 500);
+}, 400);

@@ -1,13 +1,13 @@
 {
   "name": "ValleyStats",
   "short_name": "ValleyStats",
-  "description": "Live weather for Parker & Tempe plus Arizona sports schedules",
+  "description": "Live Southwest weather (CO, AZ, NM) plus football & basketball scoreboards",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0a0f14",
-  "theme_color": "#0a0f14",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "cactus-icon.svg",

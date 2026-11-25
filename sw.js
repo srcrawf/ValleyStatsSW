@@ -3,7 +3,7 @@
 // scores still require a network request; this only guarantees the page
 // itself loads instantly and works without one.
 
-const CACHE_NAME = 'valleystats-ns-v1';
+const CACHE_NAME = 'valleystats-sw-v1';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -48,8 +48,10 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(req)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        }
         return res;
       })
       .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
