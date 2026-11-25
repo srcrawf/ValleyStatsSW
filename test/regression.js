@@ -375,8 +375,51 @@ setTimeout(() => {
             ['2026–27 season', 2026, 2028]);
 
         // --- PWA Service Worker & Manifest checks ---
-        check('sw.js uses valleystats-sw-v2 cache name and guards res.ok before caching',
-            swSrc.includes("CACHE_NAME = 'valleystats-sw-v2'") && swSrc.includes('if (res && res.ok)'), true);
+        check('sw.js uses valleystats-sw-v3 cache name and guards res.ok before caching',
+            swSrc.includes("CACHE_NAME = 'valleystats-sw-v3'") && swSrc.includes('if (res && res.ok)'), true);
+
+        // --- Live & Final score upgrades ---
+        check('CONFIG.livePollIntervalMs is 60 seconds and adaptive polling detects live games',
+            run(`(() => {
+                games = [{ teamKey:'suns', sport:'basketball', state:'in', calendarDate: todayKeyInGameTz(),
+                    dateValue: new Date(), team:'Phoenix Suns', opponent:'vs Lakers', status:'Q3 4:12',
+                    score:[{name:'PHX',score:84},{name:'LAL',score:81}] }];
+                const liveList = getLiveOrImminentGames();
+                return [CONFIG.livePollIntervalMs, liveList.length];
+            })()`),
+            [60000, 1]);
+        check('Final scorebug highlights winning row and shows FINAL · W / FINAL · L pill',
+            run(`(() => {
+                const winCard = buildScorebugCard({
+                    teamKey:'asu', sport:'football', state:'post', calendarDate: todayKeyInGameTz(),
+                    dateValue: new Date(), team:'Arizona State', opponent:'vs Oklahoma State', status:'Final',
+                    score:[{name:'ASU',score:31,winner:true},{name:'OKST',score:17,winner:false}],
+                    logo:teamLogos.asu, opponentLogo:''
+                });
+                return [
+                    winCard.querySelector('.scorebug-final')?.textContent,
+                    winCard.querySelector('.scorebug-final')?.classList.contains('is-win'),
+                    winCard.querySelectorAll('.matchup-row.is-winner').length,
+                    winCard.querySelectorAll('.matchup-row.is-loser').length
+                ];
+            })()`),
+            ['Final · W', true, 1, 1]);
+        check('renderTodayGames surfaces yesterday finals under "Yesterday’s finals"',
+            run(`(() => {
+                const yKey = todayKeyInGameTz(new Date(Date.now() - 86400000));
+                games = [{
+                    teamKey:'ua', sport:'basketball', state:'post', calendarDate: yKey,
+                    dateValue: new Date(Date.now() - 86400000), team:'Arizona Wildcats', opponent:'vs UConn',
+                    status:'Final', score:[{name:'UA',score:84,winner:true},{name:'UConn',score:78,winner:false}],
+                    logo:teamLogos.ua, opponentLogo:''
+                }];
+                renderTodayGames();
+                return [
+                    document.querySelector('#today-games-list .today-subhead')?.textContent,
+                    document.querySelectorAll('#today-games-list .is-recent-final').length
+                ];
+            })()`),
+            ['Yesterday’s finals', 1]);
         check('manifest.webmanifest uses Southwest description and #000000 OLED theme color',
             manifestJson.description.includes('Southwest') && manifestJson.theme_color === '#000000', true);
 

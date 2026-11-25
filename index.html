@@ -638,6 +638,28 @@
             font: 700 11px var(--font-mono);
         }
         .scorebug-live .live-pulse { margin-top: 0; width: 7px; height: 7px; }
+        .scorebug-final {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--panel-raised);
+            color: var(--muted);
+            font: 700 11px var(--font-mono);
+            text-transform: uppercase;
+        }
+        .scorebug-final.is-win { background: var(--live-bg); color: var(--teal); }
+        .scorebug-final.is-loss { background: var(--alert-bg); color: var(--coral); }
+        .today-subhead {
+            color: var(--muted);
+            font: 600 10px var(--font-mono);
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            margin: 12px 0 2px;
+            padding-top: 10px;
+            border-top: 1px solid var(--line);
+        }
+        .today-subhead:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
         .rivalry-pill {
             display: inline-flex;
             align-items: center;
@@ -712,6 +734,10 @@
             min-width: 24px;
             text-align: right;
         }
+        .matchup-row.is-winner .matchup-team-name { color: var(--ink); font-weight: 700; }
+        .matchup-row.is-winner .matchup-score { color: var(--teal); }
+        .matchup-row.is-loser { opacity: .62; }
+        .matchup-row.is-loser .matchup-score { color: var(--muted); font-weight: 700; }
         .logo-divider { color: var(--faint); font: 600 11px var(--font-mono); text-transform: uppercase; }
 
         .team-logo { width: 28px; height: 28px; object-fit: contain; display: block; flex-shrink: 0; }
@@ -1221,6 +1247,7 @@
         const CONFIG = {
             gameTimeZone: 'America/Denver',
             pollIntervalMs: 15 * 60 * 1000,
+            livePollIntervalMs: 60 * 1000,
             sportsCacheTtlMs: 30 * 60 * 1000,
             sportsCacheKey: 'valleyStats.sports.v2',
             weatherCacheTtlMs: 30 * 60 * 1000,
@@ -1874,7 +1901,16 @@
                     document.createTextNode(`LIVE · ${game.status || 'In Progress'}`)
                 ]));
             } else if (isFinished) {
-                statusRow.appendChild(el('span', { className: 'scorebug-time', text: game.status || 'Final' }));
+                const isMutual = Object.values(COLLEGE_TEAM_ID_BY_KEY).includes(game.opponentTeamId);
+                const ownScoreNum = Number(game.score?.[0]?.score);
+                const oppScoreNum = Number(game.score?.[1]?.score);
+                const hasNumeric = Number.isFinite(ownScoreNum) && Number.isFinite(oppScoreNum) && ownScoreNum !== oppScoreNum;
+                const won = hasNumeric ? didWin(game) : null;
+                let finalCls = 'scorebug-final';
+                let finalText = game.status || 'Final';
+                if (!isMutual && won === true) { finalCls += ' is-win'; finalText += ' · W'; }
+                else if (!isMutual && won === false) { finalCls += ' is-loss'; finalText += ' · L'; }
+                statusRow.appendChild(el('span', { className: finalCls, text: finalText }));
             } else {
                 statusRow.appendChild(el('span', {
                     className: 'scorebug-time',
@@ -1897,20 +1933,25 @@
                 logo: game.logo || teamLogos[game.teamKey],
                 rec: ownRec,
                 isOpponent: false,
-                score: game.score?.[0]?.score
+                score: game.score?.[0]?.score,
+                winner: game.score?.[0]?.winner
             };
             const oppSideData = {
                 name: opponentName(game),
                 logo: game.opponentLogo,
                 rec: oppRec,
                 isOpponent: true,
-                score: game.score?.[1]?.score
+                score: game.score?.[1]?.score,
+                winner: game.score?.[1]?.winner
             };
             const awaySide = isAway ? ownSideData : oppSideData;
             const homeSide = isAway ? oppSideData : ownSideData;
             const hasScores = (isLive || isFinished) && awaySide.score != null && homeSide.score != null;
+            const awayNum = Number(awaySide.score), homeNum = Number(homeSide.score);
+            const awayLeads = hasScores && (awaySide.winner === true || (Number.isFinite(awayNum) && Number.isFinite(homeNum) && awayNum > homeNum));
+            const homeLeads = hasScores && (homeSide.winner === true || (Number.isFinite(awayNum) && Number.isFinite(homeNum) && homeNum > awayNum));
 
-            const buildTeamRow = (side, isHome) => {
+            const buildTeamRow = (side, isHome, isWinner, isLoser) => {
                 const left = el('div', { className: 'matchup-team-left' }, [
                     teamLogoNode(side.logo, side.name),
                     el('span', {
@@ -1921,15 +1962,16 @@
                 ]);
                 const right = el('div', { className: 'matchup-row-right' }, [
                     side.rec ? el('span', { className: 'team-record', text: side.rec }) : null,
-                    isHome ? el('span', { className: 'matchup-home-tag', text: 'HOME' }) : null,
+                    isHome && !hasScores ? el('span', { className: 'matchup-home-tag', text: 'HOME' }) : null,
                     hasScores ? el('span', { className: 'matchup-score', text: String(side.score) }) : null
                 ]);
-                return el('div', { className: 'matchup-row' }, [left, right]);
+                const rowCls = `matchup-row${isWinner ? ' is-winner' : ''}${isLoser ? ' is-loser' : ''}`;
+                return el('div', { className: rowCls }, [left, right]);
             };
 
             card.appendChild(el('div', { className: 'scorebug-matchup' }, [
-                buildTeamRow(awaySide, false),
-                buildTeamRow(homeSide, true)
+                buildTeamRow(awaySide, false, awayLeads, isFinished && homeLeads),
+                buildTeamRow(homeSide, true, homeLeads, isFinished && awayLeads)
             ]));
 
             // Bottom row: Venue + Last 5 colored circles
@@ -2237,17 +2279,35 @@
         }
 
         function renderTodayGames() {
-            const todayKey = todayKeyInGameTz();
+            const now = new Date();
+            const todayKey = todayKeyInGameTz(now);
+            const yesterdayKey = todayKeyInGameTz(new Date(now.getTime() - 86400000));
             document.querySelector('#today-games-date').textContent =
-                `${new Intl.DateTimeFormat('en-US', { timeZone: GAME_TIME_ZONE, weekday: 'short', month: 'short', day: 'numeric' }).format(new Date())} · ${gameTzLabel()}`;
-            const todayGames = games.filter(g => gameCalendarKey(g) === todayKey && isGameShown(g));
+                `${new Intl.DateTimeFormat('en-US', { timeZone: GAME_TIME_ZONE, weekday: 'short', month: 'short', day: 'numeric' }).format(now)} · ${gameTzLabel()}`;
+
+            const stateRank = g => g.state === 'in' ? 0 : g.state === 'pre' ? 1 : 2;
+            const todayGames = games
+                .filter(g => gameCalendarKey(g) === todayKey && isGameShown(g))
+                .sort((a, b) => stateRank(a) - stateRank(b) || gameDate(a) - gameDate(b));
+            const yesterdayFinals = games
+                .filter(g => gameCalendarKey(g) === yesterdayKey && g.state === 'post' && isGameShown(g))
+                .sort((a, b) => gameDate(b) - gameDate(a));
+
             const list = document.querySelector('#today-games-list');
             clearNode(list);
-            if (!todayGames.length) {
+            if (!todayGames.length && !yesterdayFinals.length) {
                 list.appendChild(el('p', { className: 'today-empty', text: 'No games scheduled today.' }));
                 return;
             }
-            todayGames.forEach(game => list.appendChild(buildScorebugCard(game, 'today-game')));
+            if (todayGames.length) {
+                todayGames.forEach(game => list.appendChild(buildScorebugCard(game, 'today-game')));
+            } else {
+                list.appendChild(el('p', { className: 'today-empty', text: 'No games scheduled today.' }));
+            }
+            if (yesterdayFinals.length) {
+                list.appendChild(el('div', { className: 'today-subhead', text: 'Yesterday’s finals' }));
+                yesterdayFinals.forEach(game => list.appendChild(buildScorebugCard(game, 'today-game is-recent-final')));
+            }
         }
 
         const RECENT_RESULTS_PER_TEAM = 3;
@@ -2468,6 +2528,7 @@
                 renderLiveBanner();
                 renderCountdown();
                 loadOpponentRecords();
+                syncLivePolling();
             } catch (error) {
                 if (error.name === 'AbortError') return;
                 const cached = readSportsCache();
@@ -2477,11 +2538,105 @@
                     renderGames(document.querySelector('[data-filter].active')?.dataset.filter || 'all');
                     renderLiveBanner();
                     renderCountdown();
+                    syncLivePolling();
                 } else {
                     status.textContent = 'Sample schedule';
                 }
             } finally {
                 if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // Adaptive 60-second live-score polling (active ONLY while a game is live
+        // or starting soon — zero extra battery/network when no game is on).
+        // ---------------------------------------------------------------------------
+        let livePollTimer = null;
+        let livePollAbort = null;
+
+        function getLiveOrImminentGames(now = new Date()) {
+            const nowMs = now.getTime();
+            const fourHoursAgo = nowMs - 4 * 60 * 60 * 1000;
+            const fiveMinAhead = nowMs + 5 * 60 * 1000;
+            return games.filter(g => {
+                if (!isGameShown(g)) return false;
+                if (g.state === 'in') return true;
+                if (g.state === 'pre' && g.time !== 'TBD') {
+                    const startMs = gameDate(g).getTime();
+                    return startMs >= fourHoursAgo && startMs <= fiveMinAhead;
+                }
+                return false;
+            });
+        }
+
+        async function pollLiveScores() {
+            if (document.hidden) return;
+            const activeGames = getLiveOrImminentGames();
+            if (!activeGames.length) { syncLivePolling(); return; }
+
+            const targetPairs = new Set(activeGames.map(g => `${g.sport}:${g.teamKey}`));
+            const targetFeeds = sportsFeeds.filter(f => targetPairs.has(`${f.sport}:${f.teamKey}`));
+            if (!targetFeeds.length) return;
+
+            if (livePollAbort) livePollAbort.abort();
+            livePollAbort = new AbortController();
+            const { signal } = livePollAbort;
+
+            try {
+                const results = await Promise.all(targetFeeds.map(async feed => {
+                    try {
+                        const res = await fetch(feed.url, { signal, headers: { Accept: 'application/json' } });
+                        if (!res.ok) return null;
+                        const data = await res.json();
+                        return { feed, games: (data.events || []).map(ev => normalizeGame(ev, feed)) };
+                    } catch (err) {
+                        if (err.name === 'AbortError') throw err;
+                        return null;
+                    }
+                }));
+                if (signal.aborted) return;
+
+                const updated = results.filter(Boolean);
+                if (!updated.length) return;
+
+                const replacedPairs = new Set(updated.map(r => `${r.feed.sport}:${r.feed.teamKey}`));
+                const untouched = games.filter(g => !replacedPairs.has(`${g.sport}:${g.teamKey}`));
+                const fresh = updated.flatMap(r => r.games);
+                games = dedupeMutualGames([...untouched, ...fresh]).sort((a, b) => a.dateValue - b.dateValue);
+                writeSportsCache(games, 'Live · ESPN');
+
+                const updatedEl = document.querySelector('#sports-updated');
+                if (updatedEl) {
+                    updatedEl.textContent = `Live ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+                }
+                applyOpponentRecords();
+                renderGames(document.querySelector('[data-filter].active')?.dataset.filter || 'all');
+                renderSelectedDayGames();
+                renderLiveBanner();
+                renderCountdown();
+                syncLivePolling();
+            } catch (err) {
+                if (err.name !== 'AbortError') { /* keep existing scores until next tick */ }
+            }
+        }
+
+        function syncLivePolling() {
+            const hasLiveOrImminent = getLiveOrImminentGames().length > 0;
+            const hasLiveNow = games.some(g => g.state === 'in' && isGameShown(g));
+            const statusEl = document.querySelector('#source-status');
+            if (hasLiveOrImminent) {
+                if (!livePollTimer) {
+                    livePollTimer = setInterval(pollLiveScores, CONFIG.livePollIntervalMs);
+                }
+                if (hasLiveNow && statusEl && !statusEl.textContent.includes('60s')) {
+                    statusEl.textContent = 'Live scores · 60s refresh';
+                }
+            } else if (livePollTimer) {
+                clearInterval(livePollTimer);
+                livePollTimer = null;
+                if (statusEl && statusEl.textContent.includes('60s')) {
+                    statusEl.textContent = 'Live · ESPN';
+                }
             }
         }
 
@@ -3312,6 +3467,7 @@
                 updateClock();
                 renderCountdown();
                 if (Date.now() - lastPollAt >= CONFIG.pollIntervalMs) refreshLiveData();
+                else if (getLiveOrImminentGames().length) pollLiveScores();
             }
         });
         window.addEventListener('online', refreshLiveData);
