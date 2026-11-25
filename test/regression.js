@@ -132,13 +132,26 @@ setTimeout(() => {
         `);
         check('weather cache round-trips and renders with Cached status badge',
             run(`document.querySelector('[data-weather="tempe"] [data-weather-status]').textContent === 'Cached' &&
-                 document.querySelector('[data-pill-temp="tempe"]').textContent === '78°'`), true);
+                 document.querySelector('[data-weather="tempe"] .temperature').textContent.startsWith('78')`), true);
 
-        // --- Unified weather city selector & all 6 cities ---
-        check('all 6 CONFIG.locations entries have a matching weather card and city pill',
-            run(`Object.keys(CONFIG.locations).length === 6 && Object.keys(CONFIG.locations).every(key =>
-                document.querySelector(\`[data-weather="\${key}"]\`) && document.querySelector(\`[data-location="\${key}"]\`))`),
+        // --- All-cities glance grid + on-click 10-day detail (no horizontal bars) ---
+        check('all 6 CONFIG.locations entries render in the glance grid and 10-day panel is hidden by default',
+            run(`Object.keys(CONFIG.locations).length === 6 &&
+                 Object.keys(CONFIG.locations).every(key => document.querySelector(\`[data-weather="\${key}"]\`)) &&
+                 document.querySelector('#city-detail-panel').hidden === true`),
             true);
+        check('clicking a city card opens 10-day detail with no horizontal temp bars, and clicking again closes it',
+            run(`(() => {
+                const card = document.querySelector('[data-weather="tempe"]');
+                card.click();
+                const opened = !document.querySelector('#city-detail-panel').hidden;
+                const noBars = document.querySelectorAll('#forecast-list .temp-bar-track').length === 0;
+                const hasDay = document.querySelectorAll('#forecast-list .forecast-day').length > 0;
+                card.click();
+                const closed = document.querySelector('#city-detail-panel').hidden;
+                return [opened, noBars, hasDay, closed];
+            })()`),
+            [true, true, true, true]);
         check('Glendale stays removed from weather tracking',
             run(`!('glendale' in CONFIG.locations) && !document.querySelector('[data-weather="glendale"]') && !document.querySelector('[data-location="glendale"]')`),
             true);
@@ -362,8 +375,8 @@ setTimeout(() => {
             ['2026–27 season', 2026, 2028]);
 
         // --- PWA Service Worker & Manifest checks ---
-        check('sw.js uses valleystats-sw-v1 cache name and guards res.ok before caching',
-            swSrc.includes("CACHE_NAME = 'valleystats-sw-v1'") && swSrc.includes('if (res && res.ok)'), true);
+        check('sw.js uses valleystats-sw-v2 cache name and guards res.ok before caching',
+            swSrc.includes("CACHE_NAME = 'valleystats-sw-v2'") && swSrc.includes('if (res && res.ok)'), true);
         check('manifest.webmanifest uses Southwest description and #000000 OLED theme color',
             manifestJson.description.includes('Southwest') && manifestJson.theme_color === '#000000', true);
 

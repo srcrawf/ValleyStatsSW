@@ -290,72 +290,48 @@
         }
         .settings-foot button:hover { border-color: var(--blue); }
 
-        .weather-card[hidden], .city-pill[hidden], .team-legend span[hidden] { display: none !important; }
+        .weather-card[hidden], .team-legend span[hidden] { display: none !important; }
 
         /* Main Sections Layout */
         main { display: grid; grid-template-columns: 1fr; gap: 24px; padding-top: 18px; }
 
         /* ===================================================================
-           WEATHER — Unified City Strip + Active City Hero + 10-Day Range Bars
+           WEATHER — All-Cities Glance Grid + On-Click Hourly & 10-Day Detail
            =================================================================== */
-        .city-pills {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding-bottom: 4px;
-            margin-bottom: 14px;
-            scrollbar-width: none;
-        }
-        .city-pills::-webkit-scrollbar { display: none; }
-        .city-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            min-height: 42px;
-            padding: 8px 14px;
-            border: 1px solid var(--line);
-            border-radius: 999px;
-            background: var(--panel);
-            color: var(--muted);
-            font: 600 12px var(--font-body);
-            cursor: pointer;
-            white-space: nowrap;
-            flex: 0 0 auto;
-            transition: background .15s, color .15s, border-color .15s;
-        }
-        .city-pill:hover { color: var(--ink); border-color: rgba(56, 189, 248, .45); }
-        .city-pill.active, .city-pill[aria-selected="true"] {
-            background: var(--blue);
-            color: #061018;
-            border-color: var(--blue);
-        }
-        :root[data-theme="light"] .city-pill.active,
-        :root[data-theme="light"] .city-pill[aria-selected="true"] { color: #ffffff; }
-        .city-pill:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-        .city-pill-temp { font: 600 12px var(--font-mono); opacity: .9; }
-        .city-pill-icon { font-size: 16px; display: inline-flex; }
-
         .weather-layout {
             display: grid;
-            grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) 290px;
+            grid-template-columns: minmax(0, 1fr) 300px;
             gap: 16px;
-            align-items: stretch;
+            align-items: start;
         }
-        .weather-hero-stack { min-width: 0; }
+        .weather-main-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            min-width: 0;
+        }
         .weather-card {
-            padding: 20px;
-            display: none;
+            padding: 14px;
+            display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            height: 100%;
+            gap: 8px;
             position: relative;
-            overflow: hidden;
+            cursor: pointer;
+            transition: border-color .15s, background .15s, transform .12s;
+            user-select: none;
         }
-        .weather-card.is-active { display: flex; }
-        .location-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .weather-card:hover { border-color: rgba(56, 189, 248, .5); background: var(--panel-raised); }
+        .weather-card:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+        .weather-card.is-active {
+            border-color: var(--blue);
+            background: var(--panel-raised);
+            box-shadow: 0 0 0 1px var(--blue);
+        }
+        .location-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
         .location {
             font-family: var(--font-display);
-            font-size: 28px;
+            font-size: 21px;
             font-weight: 800;
             letter-spacing: -.01em;
             line-height: 1;
@@ -363,59 +339,98 @@
             display: flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
-        .state { color: var(--muted); font: 500 11px var(--font-mono); margin-top: 5px; }
+        .state { color: var(--muted); font: 500 10px var(--font-mono); margin-top: 3px; }
         .weather-status {
             color: var(--teal);
-            font: 600 10px var(--font-mono);
-            padding: 2px 7px;
-            border-radius: 6px;
+            font: 600 9px var(--font-mono);
+            padding: 2px 5px;
+            border-radius: 5px;
             background: rgba(34, 197, 94, .14);
             text-transform: uppercase;
             letter-spacing: .04em;
         }
         .weather-status.cached { color: var(--blue); background: rgba(56, 189, 248, .14); }
         .weather-status.offline { color: var(--coral); background: rgba(255, 90, 54, .14); }
-        .last-updated { color: var(--faint); font: 500 11px var(--font-mono); }
-        .sun-mark { color: var(--yellow); font-size: 44px; line-height: 1; flex-shrink: 0; }
+        .last-updated { color: var(--faint); font: 500 10px var(--font-mono); }
+        .sun-mark { color: var(--yellow); font-size: 28px; line-height: 1; flex-shrink: 0; }
         .sun-mark.is-cold { color: var(--blue); }
 
         .weather-main-row {
             display: flex;
-            align-items: flex-end;
+            align-items: baseline;
             justify-content: space-between;
-            gap: 16px;
-            margin: 14px 0 16px;
+            gap: 8px;
         }
         .temperature {
             font-family: var(--font-display);
-            font-size: 76px;
+            font-size: 46px;
             font-weight: 800;
-            line-height: .88;
+            line-height: .9;
             letter-spacing: -.03em;
         }
-        .temperature sup { font-size: 24px; color: var(--muted); font-weight: 600; vertical-align: top; margin-left: 2px; }
-        .condition { color: var(--muted); font-size: 13px; margin-top: 6px; }
+        .temperature sup { font-size: 16px; color: var(--muted); font-weight: 600; vertical-align: top; margin-left: 1px; }
+        .condition {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         .weather-meta {
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 5px;
+            flex-wrap: wrap;
+            gap: 4px 10px;
             color: var(--muted);
-            font: 500 12px var(--font-mono);
-            text-align: right;
+            font: 500 11px var(--font-mono);
         }
         .weather-meta strong { color: var(--ink); font-weight: 600; }
         .normal-high .delta-warm { color: var(--coral); font-weight: 600; }
         .normal-high .delta-cool { color: var(--blue); font-weight: 600; }
-        .wind-arrow { display: inline-block; font-size: 14px; margin-left: 3px; vertical-align: -2px; transition: transform .3s; }
+        .wind-arrow { display: inline-block; font-size: 13px; margin-left: 2px; vertical-align: -2px; transition: transform .3s; }
+        .weather-tap-hint { color: var(--faint); font: 500 10px var(--font-mono); margin-top: 2px; }
+        .weather-card.is-active .weather-tap-hint { color: var(--blue); }
 
-        /* Non-scrolling 6-slot Hourly Bar (eliminates nested horizontal scroll!) */
-        .hourly-strip { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); }
+        /* On-Click City Detail Drawer (Hourly + Clean 10-Day without horizontal bars) */
+        .forecast-panel { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+        .forecast-panel[hidden] { display: none !important; }
+        .forecast-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .forecast-head-left { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+        .forecast-city-label {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--ink);
+            line-height: 1;
+        }
+        .sun-times {
+            display: inline-flex;
+            gap: 12px;
+            color: var(--muted);
+            font: 500 11px var(--font-mono);
+        }
+        .close-detail-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--panel-raised);
+            color: var(--muted);
+            font: 600 12px var(--font-body);
+            cursor: pointer;
+        }
+        .close-detail-btn:hover { color: var(--ink); border-color: var(--blue); }
+
         .hourly-rail { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
         .hour-col {
-            padding: 9px 4px;
+            padding: 8px 4px;
             text-align: center;
             border: 1px solid transparent;
             border-radius: 10px;
@@ -424,46 +439,35 @@
         .hour-col.current { border-color: var(--blue); background: var(--panel-raised); }
         .hour-col time, .hour-col strong, .hour-col small { display: block; }
         .hour-col time { color: var(--muted); font: 500 11px var(--font-mono); }
-        .hour-col .weather-icon { color: var(--ink); font-size: 20px; margin: 7px 0 6px; }
-        .hour-col strong { color: var(--ink); font: 700 14px var(--font-body); }
-        .hour-col small { color: var(--blue); font: 500 10px var(--font-mono); margin-top: 4px; min-height: 13px; }
-        .sun-times {
-            display: flex;
-            justify-content: space-between;
-            color: var(--muted);
-            font: 500 11px var(--font-mono);
-            margin-top: 12px;
-        }
+        .hour-col .weather-icon { color: var(--ink); font-size: 20px; margin: 6px 0 5px; }
+        .hour-col strong { color: var(--ink); font: 700 13px var(--font-body); }
+        .hour-col small { color: var(--blue); font: 500 10px var(--font-mono); margin-top: 3px; min-height: 13px; }
 
-        /* 10-Day Outlook with Temperature Range Bars */
-        .forecast-panel { padding: 18px 20px; display: flex; flex-direction: column; min-width: 0; }
-        .forecast-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-        .forecast-city-label { font: 600 12px var(--font-mono); color: var(--blue); }
-        .forecast-list { display: flex; flex-direction: column; gap: 6px; }
-        .forecast-day {
+        /* Clean 10-Day Grid (zero horizontal lines/bars) */
+        .forecast-list {
             display: grid;
-            grid-template-columns: 52px 26px 38px 32px minmax(52px, 1fr) 32px;
-            align-items: center;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 8px;
-            padding: 5px 8px;
-            border-radius: 8px;
+        }
+        .forecast-day {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 10px 6px;
+            border-radius: 10px;
+            background: var(--well);
+            text-align: center;
             font-size: 12px;
         }
-        .forecast-day.today { background: var(--panel-raised); }
-        .forecast-day time { font-weight: 600; color: var(--ink); }
-        .weather-symbol { display: inline-flex; justify-content: center; color: var(--yellow); font-size: 18px; }
+        .forecast-day.today { background: var(--panel-raised); box-shadow: inset 0 0 0 1px var(--blue); }
+        .forecast-day time { font: 600 11px var(--font-mono); color: var(--muted); text-transform: uppercase; }
+        .forecast-day.today time { color: var(--blue); }
+        .weather-symbol { display: inline-flex; justify-content: center; color: var(--yellow); font-size: 22px; margin: 2px 0; }
         .weather-symbol.is-cold { color: var(--blue); }
-        .precip { color: var(--blue); font: 500 11px var(--font-mono); text-align: right; }
-        .forecast-low { color: var(--muted); font: 500 12px var(--font-mono); text-align: right; }
-        .forecast-high { color: var(--ink); font: 700 12px var(--font-mono); text-align: left; }
-        .temp-bar-track { height: 6px; border-radius: 999px; background: var(--well); position: relative; overflow: hidden; }
-        .temp-bar-fill {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            border-radius: 999px;
-            background: linear-gradient(90deg, var(--blue), var(--coral));
-        }
+        .forecast-temps { font: 700 13px var(--font-mono); color: var(--ink); }
+        .forecast-low { color: var(--muted); font-weight: 500; margin-left: 4px; }
+        .precip { color: var(--blue); font: 500 10px var(--font-mono); min-height: 13px; }
 
         /* Today's Games Card (Desktop beside Weather; Mobile right below Weather) */
         .today-games { padding: 18px; display: flex; flex-direction: column; min-width: 0; }
@@ -655,16 +659,26 @@
             white-space: nowrap;
         }
 
-        /* Away @ Home Matchup Row */
+        /* Stacked 2-Row Broadcast Scorebug Matchup (Away top, Home bottom — always readable at any width) */
         .scorebug-matchup {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-            align-items: center;
-            gap: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
         }
-        .matchup-side { display: flex; align-items: center; gap: 9px; min-width: 0; }
-        .matchup-side.is-home { justify-content: flex-end; text-align: right; }
-        .matchup-side-text { min-width: 0; }
+        .matchup-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-width: 0;
+        }
+        .matchup-team-left {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 0;
+            flex: 1;
+        }
         .matchup-team-name {
             display: block;
             color: var(--ink);
@@ -674,21 +688,36 @@
             white-space: nowrap;
         }
         .matchup-team-name.opponent-name { color: var(--muted); font-weight: 600; }
-        .matchup-center { text-align: center; padding: 0 2px; }
+        .matchup-row-right {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .matchup-home-tag {
+            font: 600 9px var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--faint);
+            padding: 1px 5px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+        }
         .matchup-score {
             font-family: var(--font-display);
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 800;
             line-height: 1;
             color: var(--ink);
-            white-space: nowrap;
+            min-width: 24px;
+            text-align: right;
         }
         .logo-divider { color: var(--faint); font: 600 11px var(--font-mono); text-transform: uppercase; }
 
-        .team-logo { width: 34px; height: 34px; object-fit: contain; display: block; flex-shrink: 0; }
+        .team-logo { width: 28px; height: 28px; object-fit: contain; display: block; flex-shrink: 0; }
         .opponent-placeholder {
-            width: 34px;
-            height: 34px;
+            width: 28px;
+            height: 28px;
             flex-shrink: 0;
             display: inline-flex;
             align-items: center;
@@ -697,11 +726,10 @@
             border-radius: 50%;
             background: var(--panel-raised);
             color: var(--muted);
-            font: 700 11px var(--font-mono);
+            font: 700 10px var(--font-mono);
         }
         .logo-with-record { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
-        .logo-record, .team-record { color: var(--blue); font: 600 10px var(--font-mono); display: block; }
-        .matchup-side-text .team-record { margin-top: 2px; }
+        .logo-record, .team-record { color: var(--blue); font: 600 11px var(--font-mono); display: inline-block; }
 
         /* Scorebug Footer: Venue + Last 5 Colored Circles */
         .scorebug-foot {
@@ -856,42 +884,69 @@
         .empty { color: var(--muted); font-size: 13px; padding: 14px 0; margin: 0; }
 
         /* ===================================================================
-           STANDINGS & RECENT RESULTS
+           STANDINGS & RECENT RESULTS (Compact strips + tap-to-expand dots)
            =================================================================== */
         .standings-results-grid {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
-            gap: 18px;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+            gap: 16px;
         }
-        .standings-card-wrap, .results-card-wrap { padding: 18px 20px; }
-        .standings-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 10px; }
+        .standings-card-wrap, .results-card-wrap { padding: 16px 18px; }
+        .standings-strip { display: flex; flex-wrap: wrap; gap: 7px; }
         .standings-entry {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
+            gap: 8px;
+            padding: 7px 10px;
             border: 1px solid var(--line);
-            border-radius: 10px;
+            border-radius: 9px;
             background: var(--panel-raised);
         }
-        .standings-logo { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
-        .standings-entry strong { display: block; color: var(--ink); font-size: 12px; }
-        .standings-entry span { display: block; color: var(--muted); font: 500 11px var(--font-mono); margin-top: 2px; }
+        .standings-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+        .standings-entry strong { display: block; color: var(--ink); font-size: 11px; line-height: 1.2; }
+        .standings-entry span { display: block; color: var(--muted); font: 500 10px var(--font-mono); margin-top: 2px; }
         .standings-empty { color: var(--muted); font-size: 12px; margin: 0; }
 
-        .results-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+        .results-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
         .results-team {
-            padding: 12px;
             border: 1px solid var(--line);
-            border-radius: 10px;
+            border-radius: 9px;
             background: var(--panel-raised);
+            padding: 8px 10px;
         }
-        .results-team-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-        .results-logo { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
-        .results-team-head strong { color: var(--ink); font-size: 13px; }
-        .results-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .results-team-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            list-style: none;
+            cursor: pointer;
+            user-select: none;
+        }
+        .results-team-head::-webkit-details-marker { display: none; }
+        .results-team-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+        .results-logo { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+        .results-team-head strong {
+            color: var(--ink);
+            font-size: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .results-dots { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+        .results-dots i { width: 8px; height: 8px; border-radius: 50%; display: block; background: var(--coral); }
+        .results-dots i.w { background: var(--teal); }
+        .results-list {
+            list-style: none;
+            margin: 8px 0 0;
+            padding: 8px 0 0;
+            border-top: 1px solid var(--line);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
         .result-row { display: flex; align-items: baseline; gap: 6px; }
-        .result-row .sport-mark { position: static; display: inline; font-size: 12px; }
+        .result-row .sport-mark { position: static; display: inline; font-size: 11px; }
         .result-opponent {
             flex: 1;
             min-width: 0;
@@ -903,8 +958,8 @@
         }
         .result-status { color: var(--coral); font: 600 11px var(--font-mono); white-space: nowrap; }
         .result-row.result-win .result-status { color: var(--teal); }
-        .result-date { color: var(--faint); font: 500 11px var(--font-mono); white-space: nowrap; }
-        .results-empty { color: var(--muted); font: 500 11px var(--font-mono); margin: 0; }
+        .result-date { color: var(--faint); font: 500 10px var(--font-mono); white-space: nowrap; }
+        .results-empty { color: var(--faint); font: 500 10px var(--font-mono); margin: 6px 0 0; }
 
         footer {
             color: var(--faint);
@@ -932,8 +987,7 @@
            RESPONSIVE — Tablet & Mobile-First (< 820px)
            =================================================================== */
         @media (max-width: 1080px) {
-            .weather-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-            .today-games { grid-column: 1 / -1; }
+            .weather-layout { grid-template-columns: 1fr; }
             .standings-results-grid { grid-template-columns: 1fr; }
         }
 
@@ -946,12 +1000,14 @@
             .date-stamp { order: 3; width: 100%; text-align: left; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
             .next-game-countdown { width: 100%; }
             .weather-layout { grid-template-columns: 1fr; gap: 14px; }
-            .weather-card { padding: 16px; }
-            .temperature { font-size: 66px; }
+            .weather-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+            .weather-card { padding: 12px; }
+            .temperature { font-size: 40px; }
+            .forecast-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .forecast-panel, .agenda, .today-games, .standings-card-wrap, .results-card-wrap { padding: 15px; }
             .agenda-cards, .selected-day-list { grid-template-columns: 1fr; }
-            .standings-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .results-strip { grid-template-columns: 1fr; }
+            .results-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .results-team[open] { grid-column: 1 / -1; }
 
             /* Compact Mobile Dot Calendar instead of squished 44px logo boxes */
             .calendar-cell {
@@ -1003,7 +1059,6 @@
             .hourly-rail { gap: 4px; }
             .hour-col { padding: 8px 2px; }
             .hour-col strong { font-size: 13px; }
-            .standings-strip { grid-template-columns: 1fr; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1050,16 +1105,22 @@
         <main id="main-content" data-mobile-tab="weather">
             <!-- WEATHER SECTION -->
             <section id="weather-section" data-tab="weather" aria-labelledby="weather-heading">
-                <p class="section-label" id="weather-heading">Southwest weather / now &amp; 10-day</p>
-                <div id="city-pills" class="city-pills" role="tablist" aria-label="Select weather city"></div>
+                <p class="section-label" id="weather-heading">Southwest weather · tap a city for hourly &amp; 10-day</p>
                 <div class="weather-layout">
-                    <div id="weather-cards" class="weather-hero-stack"></div>
-                    <div class="panel forecast-panel">
-                        <div class="forecast-head">
-                            <p class="section-label" style="margin:0">10-day outlook</p>
-                            <span id="forecast-city-label" class="forecast-city-label"></span>
+                    <div class="weather-main-col">
+                        <div id="weather-cards" class="weather-grid"></div>
+                        <div id="city-detail-panel" class="panel forecast-panel" hidden aria-live="polite">
+                            <div class="forecast-head">
+                                <div class="forecast-head-left">
+                                    <span id="forecast-city-label" class="forecast-city-label"></span>
+                                    <div id="detail-suntimes" class="sun-times"></div>
+                                </div>
+                                <button type="button" id="close-city-detail" class="close-detail-btn" aria-label="Close forecast">Close</button>
+                            </div>
+                            <div id="detail-hourly" aria-label="Next 12 hours"></div>
+                            <p class="section-label" style="margin:2px 0 0">10-day outlook</p>
+                            <div id="forecast-list" class="forecast-list"></div>
                         </div>
-                        <div id="forecast-list" class="forecast-list" aria-live="polite"></div>
                     </div>
                     <aside class="panel today-games" aria-labelledby="today-games-title">
                         <h2 class="today-games-title" id="today-games-title">Today’s games</h2>
@@ -1350,61 +1411,46 @@
         // ---------------------------------------------------------------------------
         // Dynamic Shell Builders (single source of truth from CONFIG)
         // ---------------------------------------------------------------------------
-        let activeCity = 'parker';
+        let activeCity = null;
+        let hourlyByCity = {};
+        let sunTimesByCity = {};
 
         function buildWeatherShell() {
-            const pills = document.querySelector('#city-pills');
             const cards = document.querySelector('#weather-cards');
-            clearNode(pills);
             clearNode(cards);
             Object.entries(CONFIG.locations).forEach(([key, info]) => {
-                const pill = el('button', {
-                    type: 'button',
-                    className: `city-pill${key === activeCity ? ' active' : ''}`,
-                    role: 'tab',
-                    'aria-selected': key === activeCity ? 'true' : 'false',
-                    dataset: { location: key }
-                }, [
-                    el('span', { className: 'city-pill-icon', dataset: { pillIcon: key } }, weatherIconNode('clear_day')),
-                    el('span', { text: info.label }),
-                    el('span', { className: 'city-pill-temp', dataset: { pillTemp: key }, text: '--°' })
-                ]);
-                pills.appendChild(pill);
-
                 const card = el('article', {
-                    className: `panel weather-card${key === activeCity ? ' is-active' : ''}`,
-                    dataset: { weather: key }
+                    className: 'panel weather-card',
+                    dataset: { weather: key, location: key },
+                    role: 'button',
+                    tabindex: '0',
+                    'aria-expanded': 'false',
+                    'aria-controls': 'city-detail-panel'
                 });
                 const locRow = el('div', { className: 'location-row' }, [
                     el('div', {}, [
                         el('div', { className: 'location' }, [
                             document.createTextNode(info.label),
-                            el('span', { className: 'weather-status cached', dataset: { weatherStatus: '' }, text: 'Loading' }),
-                            el('span', { className: 'last-updated', dataset: { weatherUpdated: '' } })
+                            el('span', { className: 'weather-status cached', dataset: { weatherStatus: '' }, text: 'Loading' })
                         ]),
-                        el('div', { className: 'state', text: info.region })
+                        el('div', { className: 'state', text: info.stateAbbr })
                     ]),
                     el('div', { className: 'sun-mark' }, weatherIconNode('clear_day'))
                 ]);
                 const mainRow = el('div', { className: 'weather-main-row' }, [
-                    el('div', {}, [
-                        el('div', { className: 'temperature' }, [document.createTextNode('--'), el('sup', { text: '°F' })]),
-                        el('div', { className: 'condition', text: 'Fetching live conditions...' })
-                    ]),
-                    el('div', { className: 'weather-meta' }, [
-                        el('span', {}, ['HIGH ', el('strong', { text: '--°' })]),
-                        el('span', {}, ['LOW ', el('strong', { text: '--°' })]),
-                        el('span', {}, ['WIND ', el('strong', { text: '-- mph' }),
-                            el('span', { className: 'material-symbols-rounded wind-arrow', dataset: { windArrow: '' }, 'aria-hidden': 'true', text: 'north' })])
-                    ])
+                    el('div', { className: 'temperature' }, [document.createTextNode('--'), el('sup', { text: '°' })]),
+                    el('span', { className: 'last-updated', dataset: { weatherUpdated: '' } })
                 ]);
                 card.appendChild(locRow);
                 card.appendChild(mainRow);
-                card.appendChild(el('div', { className: 'hourly-strip', dataset: { hourly: '' }, 'aria-label': 'Next 12 hours' }));
-                card.appendChild(el('div', { className: 'sun-times', dataset: { suntimes: '' } }, [
-                    el('span', { text: 'Sunrise --' }),
-                    el('span', { text: 'Sunset --' })
+                card.appendChild(el('div', { className: 'condition', text: 'Loading conditions...' }));
+                card.appendChild(el('div', { className: 'weather-meta' }, [
+                    el('span', {}, ['H ', el('strong', { text: '--°' })]),
+                    el('span', {}, ['L ', el('strong', { text: '--°' })]),
+                    el('span', {}, ['W ', el('strong', { text: '-- mph' }),
+                        el('span', { className: 'material-symbols-rounded wind-arrow', dataset: { windArrow: '' }, 'aria-hidden': 'true', text: 'north' })])
                 ]));
+                card.appendChild(el('div', { className: 'weather-tap-hint', text: 'Tap for 10-day' }));
                 cards.appendChild(card);
             });
         }
@@ -1421,20 +1467,41 @@
             });
         }
 
-        function selectCity(cityKey) {
-            if (!CONFIG.locations[cityKey]) return;
+        function selectCity(cityKey, { toggle = false } = {}) {
+            const detailPanel = document.querySelector('#city-detail-panel');
+            if (!cityKey || !CONFIG.locations[cityKey] || (toggle && activeCity === cityKey)) {
+                activeCity = null;
+                document.querySelectorAll('[data-weather]').forEach(card => {
+                    card.classList.remove('is-active');
+                    card.setAttribute('aria-expanded', 'false');
+                    const hint = card.querySelector('.weather-tap-hint');
+                    if (hint) hint.textContent = 'Tap for 10-day';
+                });
+                if (detailPanel) detailPanel.hidden = true;
+                return;
+            }
             activeCity = cityKey;
-            document.querySelectorAll('[data-location]').forEach(btn => {
-                const isAct = btn.dataset.location === cityKey;
-                btn.classList.toggle('active', isAct);
-                btn.setAttribute('aria-selected', isAct ? 'true' : 'false');
-            });
             document.querySelectorAll('[data-weather]').forEach(card => {
-                card.classList.toggle('is-active', card.dataset.weather === cityKey);
+                const isAct = card.dataset.weather === cityKey;
+                card.classList.toggle('is-active', isAct);
+                card.setAttribute('aria-expanded', isAct ? 'true' : 'false');
+                const hint = card.querySelector('.weather-tap-hint');
+                if (hint) hint.textContent = isAct ? 'Showing 10-day' : 'Tap for 10-day';
             });
             const lbl = document.querySelector('#forecast-city-label');
             if (lbl) lbl.textContent = `${CONFIG.locations[cityKey].label}, ${CONFIG.locations[cityKey].stateAbbr}`;
+            const sunEl = document.querySelector('#detail-suntimes');
+            if (sunEl) {
+                clearNode(sunEl);
+                const sun = sunTimesByCity[cityKey];
+                if (sun) {
+                    sunEl.appendChild(el('span', { text: `Sunrise ${sun.sunrise}` }));
+                    sunEl.appendChild(el('span', { text: `Sunset ${sun.sunset}` }));
+                }
+            }
+            renderHourlyRail(document.querySelector('#detail-hourly'), hourlyByCity[cityKey]);
             renderForecast(cityKey);
+            if (detailPanel) detailPanel.hidden = false;
         }
 
         // ---------------------------------------------------------------------------
@@ -1823,7 +1890,8 @@
             }
             card.appendChild(top);
 
-            // Middle row: Away (left) at / score Home (right) with REAL ESPN logos
+            // Middle: Stacked 2-row Broadcast Scorebug (Away top, Home bottom)
+            // Always shows full team names + real ESPN logos cleanly at any width.
             const ownSideData = {
                 name: game.team,
                 logo: game.logo || teamLogos[game.teamKey],
@@ -1840,38 +1908,28 @@
             };
             const awaySide = isAway ? ownSideData : oppSideData;
             const homeSide = isAway ? oppSideData : ownSideData;
+            const hasScores = (isLive || isFinished) && awaySide.score != null && homeSide.score != null;
 
-            const buildSide = (side, isHome) => {
-                const wrap = el('div', { className: `matchup-side${isHome ? ' is-home' : ''}` });
-                const logoEl = teamLogoNode(side.logo, side.name);
-                const textBox = el('div', { className: 'matchup-side-text' }, [
+            const buildTeamRow = (side, isHome) => {
+                const left = el('div', { className: 'matchup-team-left' }, [
+                    teamLogoNode(side.logo, side.name),
                     el('span', {
                         className: `matchup-team-name${side.isOpponent ? ' opponent-name' : ''}`,
                         text: side.name,
                         title: side.name
-                    }),
-                    side.rec ? el('span', { className: 'team-record', text: side.rec }) : null
+                    })
                 ]);
-                if (isHome) {
-                    wrap.appendChild(textBox);
-                    wrap.appendChild(logoEl);
-                } else {
-                    wrap.appendChild(logoEl);
-                    wrap.appendChild(textBox);
-                }
-                return wrap;
+                const right = el('div', { className: 'matchup-row-right' }, [
+                    side.rec ? el('span', { className: 'team-record', text: side.rec }) : null,
+                    isHome ? el('span', { className: 'matchup-home-tag', text: 'HOME' }) : null,
+                    hasScores ? el('span', { className: 'matchup-score', text: String(side.score) }) : null
+                ]);
+                return el('div', { className: 'matchup-row' }, [left, right]);
             };
 
-            const center = el('div', { className: 'matchup-center' });
-            if ((isLive || isFinished) && awaySide.score != null && homeSide.score != null) {
-                center.appendChild(el('div', { className: 'matchup-score', text: `${awaySide.score} – ${homeSide.score}` }));
-            } else {
-                center.appendChild(el('span', { className: 'logo-divider', text: 'at' }));
-            }
             card.appendChild(el('div', { className: 'scorebug-matchup' }, [
-                buildSide(awaySide, false),
-                center,
-                buildSide(homeSide, true)
+                buildTeamRow(awaySide, false),
+                buildTeamRow(homeSide, true)
             ]));
 
             // Bottom row: Venue + Last 5 colored circles
@@ -2205,11 +2263,17 @@
                     .sort((a, b) => b.dateValue - a.dateValue)
                     .slice(0, RECENT_RESULTS_PER_TEAM);
 
-                const card = el('div', { className: 'results-team', dataset: { team: teamKey } });
-                const head = el('div', { className: 'results-team-head' });
+                const card = el('details', { className: 'results-team', dataset: { team: teamKey } });
+                const titleBox = el('div', { className: 'results-team-title' });
                 const logoSrc = safeImageUrl(teamLogos[teamKey]);
-                if (logoSrc) head.appendChild(el('img', { className: 'results-logo', src: logoSrc, alt: '', loading: 'lazy' }));
-                head.appendChild(el('strong', { text: TEAM_LABEL[teamKey] || teamKey }));
+                if (logoSrc) titleBox.appendChild(el('img', { className: 'results-logo', src: logoSrc, alt: '', loading: 'lazy' }));
+                titleBox.appendChild(el('strong', { text: TEAM_LABEL[teamKey] || teamKey }));
+
+                const dots = el('span', { className: 'results-dots', 'aria-hidden': 'true' });
+                results.slice().reverse().forEach(game => {
+                    dots.appendChild(el('i', { className: didWin(game) ? 'w' : 'l' }));
+                });
+                const head = el('summary', { className: 'results-team-head' }, [titleBox, dots]);
                 card.appendChild(head);
 
                 if (!results.length) {
@@ -2602,34 +2666,28 @@
                 list.appendChild(el('p', { className: 'empty', text: 'Forecast loading...' }));
                 return;
             }
-            const minAll = Math.min(...days.map(d => d.l));
-            const maxAll = Math.max(...days.map(d => d.h));
-            const span = Math.max(1, maxAll - minAll);
-
             days.forEach((item, index) => {
                 const iconName = weatherIconName(item.i);
                 const isCold = iconName === 'snowing' || iconName === 'rainy' || iconName === 'foggy';
-                const leftPct = ((item.l - minAll) / span) * 100;
-                const widthPct = Math.max(10, ((item.h - item.l) / span) * 100);
                 const precipNum = parseInt(item.p, 10) || 0;
 
                 const day = el('div', { className: `forecast-day${index === 0 ? ' today' : ''}` }, [
                     el('time', { text: item.d }),
                     el('span', { className: `weather-symbol${isCold ? ' is-cold' : ''}` }, weatherIconNode(item.i)),
-                    el('span', { className: 'precip', text: precipNum > 0 ? item.p : '' }),
-                    el('span', { className: 'forecast-low', text: `${item.l}°` }),
-                    el('div', { className: 'temp-bar-track' }, [
-                        el('div', { className: 'temp-bar-fill', style: `left:${leftPct.toFixed(1)}%;width:${widthPct.toFixed(1)}%` })
+                    el('div', { className: 'forecast-temps' }, [
+                        document.createTextNode(`${item.h}°`),
+                        el('span', { className: 'forecast-low', text: `${item.l}°` })
                     ]),
-                    el('span', { className: 'forecast-high', text: `${item.h}°` })
+                    el('span', { className: 'precip', text: precipNum > 0 ? `${item.p} rain` : '' })
                 ]);
                 list.appendChild(day);
             });
         }
 
-        function renderHourlyRail(card, hourly) {
-            const hourlyStrip = card.querySelector('[data-hourly]');
-            if (!hourlyStrip || !hourly?.time?.length) return;
+        function renderHourlyRail(container, hourly) {
+            if (!container) return;
+            clearNode(container);
+            if (!hourly?.time?.length) return;
             const now = new Date();
             let startIndex = hourly.time.findIndex(time => new Date(time) >= now);
             if (startIndex < 0) startIndex = 0;
@@ -2637,7 +2695,6 @@
             for (let i = startIndex; i < hourly.time.length && indices.length < 6; i += 2) indices.push(i);
             if (!indices.length) return;
 
-            clearNode(hourlyStrip);
             const rail = el('div', { className: 'hourly-rail' });
             indices.forEach((index, position) => {
                 const time = new Date(hourly.time[index]);
@@ -2651,7 +2708,7 @@
                 ]);
                 rail.appendChild(col);
             });
-            hourlyStrip.appendChild(rail);
+            container.appendChild(rail);
         }
 
         function renderLiveWeather(location, data, statusMode = 'live') {
@@ -2664,20 +2721,15 @@
             const highVal = Math.round(day.temperature_2m_max[0]);
             const lowVal = Math.round(day.temperature_2m_min[0]);
             liveHighByCity[location] = highVal;
-
-            // Sync city pill live temp & icon
-            const pillTemp = document.querySelector(`[data-pill-temp="${location}"]`);
-            if (pillTemp) pillTemp.textContent = `${tempVal}°`;
-            const pillIcon = document.querySelector(`[data-pill-icon="${location}"]`);
-            if (pillIcon) { clearNode(pillIcon); pillIcon.appendChild(weatherIconNode(current.weather_code)); }
+            if (hourly) hourlyByCity[location] = hourly;
 
             card.querySelector('.condition').textContent =
-                `${weatherDescriptions[current.weather_code] || 'Mixed conditions'} · feels like ${Math.round(current.apparent_temperature)}°`;
+                `${weatherDescriptions[current.weather_code] || 'Mixed conditions'} · feels ${Math.round(current.apparent_temperature)}°`;
 
             const tempEl = card.querySelector('.temperature');
             clearNode(tempEl);
             tempEl.appendChild(document.createTextNode(String(tempVal)));
-            tempEl.appendChild(el('sup', { text: '°F' }));
+            tempEl.appendChild(el('sup', { text: '°' }));
 
             const metaStrong = card.querySelectorAll('.weather-meta strong');
             metaStrong[0].textContent = `${highVal}°`;
@@ -2702,15 +2754,10 @@
                 else { st.textContent = 'Live'; }
             }
 
-            const sunTimes = card.querySelector('[data-suntimes]');
-            if (sunTimes && day.sunrise?.[0] && day.sunset?.[0]) {
+            if (day.sunrise?.[0] && day.sunset?.[0]) {
                 const fmt = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                clearNode(sunTimes);
-                sunTimes.appendChild(el('span', { text: `Sunrise ${fmt(day.sunrise[0])}` }));
-                sunTimes.appendChild(el('span', { text: `Sunset ${fmt(day.sunset[0])}` }));
+                sunTimesByCity[location] = { sunrise: fmt(day.sunrise[0]), sunset: fmt(day.sunset[0]) };
             }
-
-            renderHourlyRail(card, hourly);
 
             if (day?.time?.length) {
                 forecasts[location] = day.time.map((date, index) => ({
@@ -2722,6 +2769,7 @@
                 }));
             }
             if (normalsByCity[location]) renderHistoricalNormals({ [location]: normalsByCity[location] });
+            if (activeCity === location) selectCity(location);
         }
 
         let weatherAbort = null;
@@ -2782,7 +2830,7 @@
             if (signal.aborted) return;
             const indicator = document.querySelector('#live-indicator');
             if (indicator) indicator.classList.toggle('offline', liveCount === 0);
-            renderForecast(activeCity);
+            if (activeCity) selectCity(activeCity);
         }
 
         // ---------------------------------------------------------------------------
@@ -3007,12 +3055,9 @@
                 const shown = isCityShown(key);
                 const card = document.querySelector(`[data-weather="${key}"]`);
                 if (card) card.hidden = !shown;
-                const tab = document.querySelector(`[data-location="${key}"]`);
-                if (tab) tab.hidden = !shown;
             });
-            if (!isCityShown(activeCity)) {
-                const firstVisible = Object.keys(CONFIG.locations).find(k => isCityShown(k));
-                if (firstVisible) selectCity(firstVisible);
+            if (activeCity && !isCityShown(activeCity)) {
+                selectCity(null);
             }
         }
         function applyTeamPrefs() {
@@ -3090,10 +3135,19 @@
         buildWeatherShell();
         buildTeamLegend();
 
-        document.querySelector('#city-pills').addEventListener('click', event => {
-            const btn = event.target.closest('[data-location]');
-            if (btn) selectCity(btn.dataset.location);
+        const weatherCardsEl = document.querySelector('#weather-cards');
+        weatherCardsEl.addEventListener('click', event => {
+            const card = event.target.closest('.weather-card[data-weather]');
+            if (card) selectCity(card.dataset.weather, { toggle: true });
         });
+        weatherCardsEl.addEventListener('keydown', event => {
+            const card = event.target.closest('.weather-card[data-weather]');
+            if (card && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                selectCity(card.dataset.weather, { toggle: true });
+            }
+        });
+        document.querySelector('#close-city-detail')?.addEventListener('click', () => selectCity(null));
 
         document.querySelectorAll('[data-filter]').forEach((button, index) =>
             button.setAttribute('aria-pressed', index === 0 ? 'true' : 'false'));
@@ -3224,7 +3278,6 @@
         renderSettingsPanel();
         document.querySelectorAll('#team-legend [data-team]').forEach(item => { item.hidden = !isTeamShown(item.dataset.team); });
         applyCityPrefs();
-        selectCity(isCityShown(activeCity) ? activeCity : Object.keys(CONFIG.locations).find(k => isCityShown(k)) || 'parker');
         renderGames('all');
         applyScheduleViewMode(scheduleViewMode);
         updateClock();
