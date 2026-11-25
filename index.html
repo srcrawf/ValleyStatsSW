@@ -578,6 +578,19 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 12px;
         }
+        .agenda-more-btn {
+            display: block;
+            width: 100%;
+            margin-top: 14px;
+            min-height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--panel-raised);
+            color: var(--blue);
+            font: 600 13px var(--font-body);
+            cursor: pointer;
+        }
+        .agenda-more-btn:hover { border-color: var(--blue); }
         .scorebug-card {
             --accent: var(--team-cardinals);
             background: linear-gradient(96deg, color-mix(in srgb, var(--accent) 14%, var(--panel)) 0%, var(--panel) 44%);
@@ -951,12 +964,8 @@
             .calendar-event, .calendar-event-more { display: none; }
             .calendar-dots { display: flex; }
 
-            /* Mobile 1-thumb Bottom Tab Bar */
-            main[data-mobile-tab="weather"] > section:not([data-tab="weather"]),
-            main[data-mobile-tab="games"] > section:not([data-tab="games"]),
-            main[data-mobile-tab="standings"] > section:not([data-tab="standings"]) {
-                display: none;
-            }
+            /* Mobile 1-thumb Quick-Jump Bar (all sections remain visible; Weather stays at top) */
+            main > section { scroll-margin-top: 14px; }
             .mobile-nav {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
@@ -1038,9 +1047,9 @@
             </div>
         </div>
 
-        <main id="main-content" data-mobile-tab="games">
+        <main id="main-content" data-mobile-tab="weather">
             <!-- WEATHER SECTION -->
-            <section data-tab="weather" aria-labelledby="weather-heading">
+            <section id="weather-section" data-tab="weather" aria-labelledby="weather-heading">
                 <p class="section-label" id="weather-heading">Southwest weather / now &amp; 10-day</p>
                 <div id="city-pills" class="city-pills" role="tablist" aria-label="Select weather city"></div>
                 <div class="weather-layout">
@@ -1061,7 +1070,7 @@
             </section>
 
             <!-- SPORTS SCHEDULE SECTION -->
-            <section data-tab="games" aria-labelledby="sports-heading">
+            <section id="games-section" data-tab="games" aria-labelledby="sports-heading">
                 <p class="section-label" id="sports-heading">Scoreboard &amp; upcoming schedule</p>
                 <div class="panel agenda">
                     <div class="agenda-head">
@@ -1083,18 +1092,18 @@
                             <button data-filter="basketball" type="button">Basketball</button>
                         </div>
                         <div class="segmented view-toggle" role="group" aria-label="Schedule view">
-                            <button data-view="agenda" type="button">Agenda</button>
-                            <button data-view="calendar" type="button">Calendar</button>
+                            <button class="active" data-view="calendar" type="button" aria-pressed="true">Calendar</button>
+                            <button data-view="agenda" type="button" aria-pressed="false">Agenda</button>
                         </div>
                     </div>
 
                     <div id="team-legend" class="team-legend" aria-hidden="true"></div>
 
-                    <!-- Agenda List View (default on mobile) -->
-                    <div id="agenda-view" class="agenda-view"></div>
+                    <!-- Agenda List View (paginated 6 games at a time) -->
+                    <div id="agenda-view" class="agenda-view" hidden></div>
 
-                    <!-- Month Calendar View (default on desktop; Dot Calendar on mobile) -->
-                    <div id="calendar-wrap" class="calendar-wrap" hidden>
+                    <!-- Month Calendar View (default; Dot Calendar on mobile, 7-col Grid on desktop) -->
+                    <div id="calendar-wrap" class="calendar-wrap">
                         <div class="calendar-heading">
                             <h3 id="calendar-month-title" class="month-title">Loading month...</h3>
                             <div class="calendar-nav" aria-label="Change visible month">
@@ -1110,7 +1119,7 @@
             </section>
 
             <!-- STANDINGS & RECENT RESULTS SECTION -->
-            <section data-tab="standings" aria-labelledby="standings-heading">
+            <section id="standings-section" data-tab="standings" aria-labelledby="standings-heading">
                 <p class="section-label" id="standings-heading">Standings &amp; recent results</p>
                 <div class="standings-results-grid">
                     <div class="panel standings-card-wrap">
@@ -1128,15 +1137,15 @@
         <footer>Weather is live via Open-Meteo &amp; NWS · schedules &amp; standings via ESPN · all game times shown in Mountain Time</footer>
     </div>
 
-    <!-- Mobile Bottom Tab Navigation -->
-    <nav id="mobile-nav" class="mobile-nav" aria-label="Primary mobile navigation">
-        <button type="button" data-mobile-nav="games" class="active" aria-current="page">
-            <span class="material-symbols-rounded" aria-hidden="true">scoreboard</span>
-            <span>Games</span>
-        </button>
-        <button type="button" data-mobile-nav="weather">
+    <!-- Mobile Bottom Quick-Jump Navigation -->
+    <nav id="mobile-nav" class="mobile-nav" aria-label="Quick section jump">
+        <button type="button" data-mobile-nav="weather" class="active" aria-current="page">
             <span class="material-symbols-rounded" aria-hidden="true">partly_cloudy_day</span>
             <span>Weather</span>
+        </button>
+        <button type="button" data-mobile-nav="games">
+            <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>
+            <span>Schedule</span>
         </button>
         <button type="button" data-mobile-nav="standings">
             <span class="material-symbols-rounded" aria-hidden="true">emoji_events</span>
@@ -1885,12 +1894,14 @@
         // Agenda View + Calendar View + Today's Games + Recent Results
         // ---------------------------------------------------------------------------
         const MAX_INLINE_CALENDAR_EVENTS = 2;
+        const AGENDA_PAGE_SIZE = 6;
+        let agendaLimit = AGENDA_PAGE_SIZE;
         let selectedDayKey = null;
         let visibleCalendarMonth = null;
-        let scheduleViewMode = (typeof window !== 'undefined' && window.innerWidth <= 820) ? 'agenda' : 'calendar';
+        let scheduleViewMode = 'calendar';
 
         function applyScheduleViewMode(mode) {
-            scheduleViewMode = mode === 'calendar' ? 'calendar' : 'agenda';
+            scheduleViewMode = mode === 'agenda' ? 'agenda' : 'calendar';
             const agendaEl = document.querySelector('#agenda-view');
             const calWrap = document.querySelector('#calendar-wrap');
             if (agendaEl) agendaEl.hidden = scheduleViewMode !== 'agenda';
@@ -1922,19 +1933,18 @@
                 container.appendChild(el('p', { className: 'empty', text: 'No upcoming games match the selected filter.' }));
                 return;
             }
+            const sorted = visibleGames.slice().sort((a, b) => gameDate(a) - gameDate(b));
+            const shown = sorted.slice(0, agendaLimit);
+            const remaining = sorted.length - shown.length;
             const todayKey = todayKeyInGameTz();
             const byDay = new Map();
-            visibleGames
-                .slice()
-                .sort((a, b) => gameDate(a) - gameDate(b))
-                .forEach(g => {
-                    const key = gameCalendarKey(g);
-                    if (!byDay.has(key)) byDay.set(key, []);
-                    byDay.get(key).push(g);
-                });
+            shown.forEach(g => {
+                const key = gameCalendarKey(g);
+                if (!byDay.has(key)) byDay.set(key, []);
+                byDay.get(key).push(g);
+            });
 
-            // Show upcoming 20 game-days in Agenda for crisp mobile performance
-            [...byDay.entries()].slice(0, 20).forEach(([dayKey, dayGames]) => {
+            byDay.forEach((dayGames, dayKey) => {
                 const group = el('div', { className: 'agenda-day-group' });
                 group.appendChild(el('h3', { className: 'agenda-day-heading', text: formatAgendaDayHeading(dayKey, todayKey) }));
                 const grid = el('div', { className: 'agenda-cards' });
@@ -1942,6 +1952,19 @@
                 group.appendChild(grid);
                 container.appendChild(group);
             });
+
+            if (remaining > 0) {
+                const moreBtn = el('button', {
+                    type: 'button',
+                    className: 'agenda-more-btn',
+                    text: `Show more games (${remaining} remaining)`,
+                    onClick: () => {
+                        agendaLimit += AGENDA_PAGE_SIZE;
+                        renderAgendaList(visibleGames);
+                    }
+                });
+                container.appendChild(moreBtn);
+            }
         }
 
         function buildCalendarEvent(game) {
@@ -3081,6 +3104,7 @@
             });
             button.classList.add('active');
             button.setAttribute('aria-pressed', 'true');
+            agendaLimit = AGENDA_PAGE_SIZE;
             renderGames(button.dataset.filter);
             renderSelectedDayGames();
         }));
@@ -3091,8 +3115,11 @@
 
         document.querySelectorAll('[data-mobile-nav]').forEach(btn => {
             btn.addEventListener('click', () => {
-                setMobileTab(btn.dataset.mobileNav);
-                window.scrollTo?.({ top: 0, behavior: 'smooth' });
+                const target = btn.dataset.mobileNav;
+                setMobileTab(target);
+                const sec = document.querySelector(`#${target}-section`);
+                if (sec?.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                else window.scrollTo?.({ top: 0, behavior: 'smooth' });
             });
         });
 
@@ -3198,8 +3225,8 @@
         document.querySelectorAll('#team-legend [data-team]').forEach(item => { item.hidden = !isTeamShown(item.dataset.team); });
         applyCityPrefs();
         selectCity(isCityShown(activeCity) ? activeCity : Object.keys(CONFIG.locations).find(k => isCityShown(k)) || 'parker');
-        applyScheduleViewMode(scheduleViewMode);
         renderGames('all');
+        applyScheduleViewMode(scheduleViewMode);
         updateClock();
         renderCountdown();
         renderStandings(readStandingsCache() || []);

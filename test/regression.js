@@ -227,13 +227,34 @@ setTimeout(() => {
                 return [document.querySelector('#agenda-view').hidden, !document.querySelector('#calendar-wrap').hidden];
             })()`),
             [true, true]);
-        check('mobile bottom tab bar switches active mobile tab and aria-current',
+        check('page defaults to Calendar view with Weather visible at top (never hidden on mobile)',
+            run(`[scheduleViewMode, document.querySelector('#main-content').dataset.mobileTab, !document.querySelector('#calendar-wrap').hidden, document.querySelector('#agenda-view').hidden]`),
+            ['calendar', 'weather', true, true]);
+        check('Agenda view paginates to 6 games initially with a Show more button',
+            run(`(() => {
+                const base = Date.now() + 86400000;
+                const ten = Array.from({ length: 10 }, (_, i) => ({
+                    teamKey:'asu', sport:'basketball', calendarDate:'2099-01-' + String(i + 1).padStart(2, '0'),
+                    dateValue: new Date(base + i * 86400000), state:'pre', team:'Arizona State',
+                    opponent:'vs Opp ' + i, opponentShort:'Opp ' + i, time:'7:00 PM', broadcast:'ESPN', logo:teamLogos.asu, opponentLogo:''
+                }));
+                agendaLimit = AGENDA_PAGE_SIZE;
+                renderAgendaList(ten);
+                const beforeCount = document.querySelectorAll('#agenda-view .scorebug-card').length;
+                const moreBtn = document.querySelector('#agenda-view .agenda-more-btn');
+                const moreText = moreBtn?.textContent;
+                moreBtn?.click();
+                const afterCount = document.querySelectorAll('#agenda-view .scorebug-card').length;
+                return [beforeCount, moreText, afterCount];
+            })()`),
+            [6, 'Show more games (4 remaining)', 10]);
+        check('mobile bottom quick-jump bar switches active button and aria-current',
             run(`(() => {
                 setMobileTab('standings');
                 return [
                     document.querySelector('#main-content').dataset.mobileTab,
                     document.querySelector('[data-mobile-nav="standings"]').getAttribute('aria-current'),
-                    document.querySelector('[data-mobile-nav="games"]').getAttribute('aria-current')
+                    document.querySelector('[data-mobile-nav="weather"]').getAttribute('aria-current')
                 ];
             })()`),
             ['standings', 'page', null]);
