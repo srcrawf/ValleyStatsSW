@@ -299,10 +299,9 @@
            WEATHER — All-Cities Glance Grid + On-Click Hourly & 10-Day Detail
            =================================================================== */
         .weather-layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 300px;
+            display: flex;
+            flex-direction: column;
             gap: 16px;
-            align-items: start;
         }
         .weather-main-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
         .weather-grid {
@@ -469,19 +468,32 @@
         .forecast-low { color: var(--muted); font-weight: 500; margin-left: 4px; }
         .precip { color: var(--blue); font: 500 10px var(--font-mono); min-height: 13px; }
 
-        /* Today's Games Card (Desktop beside Weather; Mobile right below Weather) */
-        .today-games { padding: 18px; display: flex; flex-direction: column; min-width: 0; }
+        /* Today's Games Section (full-width horizontal grid on desktop, stacked on mobile) */
+        .today-games { padding: 18px 20px; display: flex; flex-direction: column; min-width: 0; }
+        .today-games-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
         .today-games-title {
             font-family: var(--font-display);
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 800;
             text-transform: uppercase;
             margin: 0;
             line-height: 1;
         }
-        .today-games-date { color: var(--muted); font: 500 11px var(--font-mono); margin-top: 5px; margin-bottom: 12px; }
-        #today-games-list { display: flex; flex-direction: column; gap: 10px; }
-        .today-empty { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 16px 0 4px; }
+        .today-games-date { color: var(--muted); font: 500 11px var(--font-mono); }
+        #today-games-list { display: flex; flex-direction: column; gap: 12px; }
+        .today-games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 12px;
+        }
+        .today-empty { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 4px 0; }
 
         /* ===================================================================
            SPORTS — Broadcast Scorebug Cards, Agenda List, Calendar, Standings
@@ -735,8 +747,8 @@
             text-align: right;
         }
         .matchup-row.is-winner .matchup-team-name { color: var(--ink); font-weight: 700; }
-        .matchup-row.is-winner .matchup-score { color: var(--teal); }
-        .matchup-row.is-loser { opacity: .62; }
+        .matchup-row.is-winner .matchup-score { color: var(--ink); }
+        .matchup-row.is-loser { opacity: .55; }
         .matchup-row.is-loser .matchup-score { color: var(--muted); font-weight: 700; }
         .logo-divider { color: var(--faint); font: 600 11px var(--font-mono); text-transform: uppercase; }
 
@@ -959,6 +971,11 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        .results-sport-tag {
+            color: var(--muted);
+            font: 600 10px var(--font-mono);
+            flex-shrink: 0;
+        }
         .results-dots { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
         .results-dots i { width: 8px; height: 8px; border-radius: 50%; display: block; background: var(--coral); }
         .results-dots i.w { background: var(--teal); }
@@ -1149,8 +1166,10 @@
                         </div>
                     </div>
                     <aside class="panel today-games" aria-labelledby="today-games-title">
-                        <h2 class="today-games-title" id="today-games-title">Today’s games</h2>
-                        <div class="today-games-date" id="today-games-date">MST · loading</div>
+                        <div class="today-games-head">
+                            <h2 class="today-games-title" id="today-games-title">Today’s games</h2>
+                            <div class="today-games-date" id="today-games-date">MST · loading</div>
+                        </div>
                         <div id="today-games-list"><p class="today-empty">Checking the schedule...</p></div>
                     </aside>
                 </div>
@@ -2300,13 +2319,17 @@
                 return;
             }
             if (todayGames.length) {
-                todayGames.forEach(game => list.appendChild(buildScorebugCard(game, 'today-game')));
+                const grid = el('div', { className: 'today-games-grid' });
+                todayGames.forEach(game => grid.appendChild(buildScorebugCard(game, 'today-game')));
+                list.appendChild(grid);
             } else {
                 list.appendChild(el('p', { className: 'today-empty', text: 'No games scheduled today.' }));
             }
             if (yesterdayFinals.length) {
                 list.appendChild(el('div', { className: 'today-subhead', text: 'Yesterday’s finals' }));
-                yesterdayFinals.forEach(game => list.appendChild(buildScorebugCard(game, 'today-game is-recent-final')));
+                const yGrid = el('div', { className: 'today-games-grid' });
+                yesterdayFinals.forEach(game => yGrid.appendChild(buildScorebugCard(game, 'today-game is-recent-final')));
+                list.appendChild(yGrid);
             }
         }
 
@@ -2315,19 +2338,35 @@
             const strip = document.querySelector('#recent-results');
             if (!strip) return;
             clearNode(strip);
-            const teamKeys = TEAM_ORDER.filter(teamKey => teamKey in teamLogos && isTeamShown(teamKey) &&
-                (filter === 'all' || sportsFeeds.some(f => f.teamKey === teamKey && f.sport === filter)));
-            teamKeys.forEach(teamKey => {
-                const results = games
-                    .filter(g => g.teamKey === teamKey && hasGameEnded(g) && (filter === 'all' || g.sport === filter))
-                    .sort((a, b) => b.dateValue - a.dateValue)
-                    .slice(0, RECENT_RESULTS_PER_TEAM);
 
-                const card = el('details', { className: 'results-team', dataset: { team: teamKey } });
+            // Group per team + sport (mirroring Conference Standings) so football
+            // and basketball results are never mixed together under one row.
+            const teamSportPairs = [];
+            TEAM_ORDER.forEach(teamKey => {
+                if (!(teamKey in teamLogos) || !isTeamShown(teamKey)) return;
+                ['basketball', 'football'].forEach(sport => {
+                    if (filter !== 'all' && filter !== sport) return;
+                    if (!sportsFeeds.some(f => f.teamKey === teamKey && f.sport === sport)) return;
+                    const results = games
+                        .filter(g => g.teamKey === teamKey && g.sport === sport && hasGameEnded(g))
+                        .sort((a, b) => b.dateValue - a.dateValue)
+                        .slice(0, RECENT_RESULTS_PER_TEAM);
+                    if (results.length) teamSportPairs.push({ teamKey, sport, results });
+                });
+            });
+
+            if (!teamSportPairs.length) {
+                strip.appendChild(el('p', { className: 'results-empty', text: 'No finished games yet this season.' }));
+                return;
+            }
+
+            teamSportPairs.forEach(({ teamKey, sport, results }) => {
+                const card = el('details', { className: 'results-team', dataset: { team: teamKey, sport } });
                 const titleBox = el('div', { className: 'results-team-title' });
                 const logoSrc = safeImageUrl(teamLogos[teamKey]);
                 if (logoSrc) titleBox.appendChild(el('img', { className: 'results-logo', src: logoSrc, alt: '', loading: 'lazy' }));
                 titleBox.appendChild(el('strong', { text: TEAM_LABEL[teamKey] || teamKey }));
+                titleBox.appendChild(el('span', { className: 'results-sport-tag', text: `· ${sport === 'football' ? 'FB' : 'BB'}` }));
 
                 const dots = el('span', { className: 'results-dots', 'aria-hidden': 'true' });
                 results.slice().reverse().forEach(game => {
@@ -2336,25 +2375,21 @@
                 const head = el('summary', { className: 'results-team-head' }, [titleBox, dots]);
                 card.appendChild(head);
 
-                if (!results.length) {
-                    card.appendChild(el('p', { className: 'results-empty', text: 'No results yet this season.' }));
-                } else {
-                    const list = el('ul', { className: 'results-list' });
-                    results.forEach(game => {
-                        const row = el('li', { className: `result-row${didWin(game) ? ' result-win' : ''}` });
-                        if (sportMark(game.sport)) {
-                            row.appendChild(el('span', { className: 'sport-mark', 'aria-label': `${game.sport} game`, text: sportMark(game.sport) }));
-                        }
-                        row.appendChild(el('span', { className: 'result-opponent', text: game.opponentShort || opponentName(game) }));
-                        row.appendChild(el('span', { className: 'result-status', text: gameSummary(game) }));
-                        row.appendChild(el('span', {
-                            className: 'result-date',
-                            text: game.dateValue.toLocaleDateString('en-US', { timeZone: GAME_TIME_ZONE, month: 'short', day: 'numeric' })
-                        }));
-                        list.appendChild(row);
-                    });
-                    card.appendChild(list);
-                }
+                const list = el('ul', { className: 'results-list' });
+                results.forEach(game => {
+                    const row = el('li', { className: `result-row${didWin(game) ? ' result-win' : ''}` });
+                    if (sportMark(game.sport)) {
+                        row.appendChild(el('span', { className: 'sport-mark', 'aria-label': `${game.sport} game`, text: sportMark(game.sport) }));
+                    }
+                    row.appendChild(el('span', { className: 'result-opponent', text: game.opponentShort || opponentName(game) }));
+                    row.appendChild(el('span', { className: 'result-status', text: gameSummary(game) }));
+                    row.appendChild(el('span', {
+                        className: 'result-date',
+                        text: game.dateValue.toLocaleDateString('en-US', { timeZone: GAME_TIME_ZONE, month: 'short', day: 'numeric' })
+                    }));
+                    list.appendChild(row);
+                });
+                card.appendChild(list);
                 strip.appendChild(card);
             });
         }

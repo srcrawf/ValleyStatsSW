@@ -375,8 +375,19 @@ setTimeout(() => {
             ['2026–27 season', 2026, 2028]);
 
         // --- PWA Service Worker & Manifest checks ---
-        check('sw.js uses valleystats-sw-v3 cache name and guards res.ok before caching',
-            swSrc.includes("CACHE_NAME = 'valleystats-sw-v3'") && swSrc.includes('if (res && res.ok)'), true);
+        check('sw.js uses valleystats-sw-v4 cache name and guards res.ok before caching',
+            swSrc.includes("CACHE_NAME = 'valleystats-sw-v4'") && swSrc.includes('if (res && res.ok)'), true);
+        check('Recent results separates football and basketball per college team (FB / BB tags)',
+            run(`(() => {
+                games = [
+                    { teamKey:'asu', sport:'football', state:'post', dateValue:new Date('2026-11-21T20:00:00Z'), calendarDate:'2026-11-21', team:'Arizona State', opponent:'vs Okla St', opponentShort:'Okla St', status:'Final', score:[{score:31,winner:true},{score:17,winner:false}] },
+                    { teamKey:'asu', sport:'basketball', state:'post', dateValue:new Date('2026-11-24T20:00:00Z'), calendarDate:'2026-11-24', team:'Arizona State', opponent:'vs LSU', opponentShort:'LSU', status:'Final', score:[{score:92,winner:false},{score:94,winner:true}] }
+                ];
+                renderRecentResults('all');
+                const cards = [...document.querySelectorAll('#recent-results .results-team[data-team="asu"]')];
+                return cards.map(c => [c.dataset.sport, c.querySelector('.results-sport-tag')?.textContent]);
+            })()`),
+            [['basketball', '· BB'], ['football', '· FB']]);
 
         // --- Live & Final score upgrades ---
         check('CONFIG.livePollIntervalMs is 60 seconds and adaptive polling detects live games',

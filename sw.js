@@ -3,7 +3,7 @@
 // scores still require a network request; this only guarantees the page
 // itself loads instantly and works without one.
 
-const CACHE_NAME = 'valleystats-sw-v3';
+const CACHE_NAME = 'valleystats-sw-v4';
 const SHELL_FILES = [
   './',
   './index.html',
